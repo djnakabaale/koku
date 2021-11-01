@@ -57,6 +57,7 @@ GCP_SERVICES = (
 )
 
 OCP_DATA_SOURCES = ("Pod", "Storage")
+OCP_NAMESPACES = ("default", "koku", "koku-dev", "koku-stage", "koku-perf", "koku-prod")
 # Node tuple ex ((node name, resource id, cpu, memory, volume tuple))
 OCP_NODES = (
     ("node_1", "i-00000001", 4, 16, {"app": "mobile", "disabled": "Danilov"}),

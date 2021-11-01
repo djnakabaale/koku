@@ -58,6 +58,8 @@ class ModelBakeryDataLoader(DataLoader):
         self.tags = [{key: self.faker.slug()} for key in self.tag_keys] + [{"app": self.faker.slug()}]
         self.tag_test_tag_key = "app"
         self._populate_enabled_tag_key_table()
+        self.namespaces = list(constants.OCP_NAMESPACES[:])
+        random.shuffle(self.namespaces)
 
     def _get_bill_model(self, provider_type):
         """Return the correct model for a provider type."""
@@ -345,7 +347,7 @@ class ModelBakeryDataLoader(DataLoader):
         provider = self.create_provider(provider_type, credentials, billing_source, cluster_id)
         if not on_cloud:
             self.create_cost_model(provider)
-        namespaces = {node[0]: self.faker.slug() for node in constants.OCP_NODES}
+        namespaces = {node[0]: self.namespaces[i] for i, node in enumerate(constants.OCP_NODES)}
         volumes = {node[0]: constants.OCP_PVCS[i] for i, node in enumerate(constants.OCP_NODES)}
         cluster_cpu_capacity = sum(node_tuple[2] for node_tuple in constants.OCP_NODES)
         cluster_memory_capacity = sum(node_tuple[3] for node_tuple in constants.OCP_NODES)

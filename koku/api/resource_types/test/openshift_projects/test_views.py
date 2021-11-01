@@ -64,9 +64,7 @@ class ResourceTypesViewTestOpenshiftProjects(IamTestCase):
         self.assertIsInstance(json_result.get("data"), list)
         self.assertEqual(len(json_result.get("data")), expected)
 
-    @RbacPermissions(
-        {"openshift.cluster": {"read": ["OCP-on-AWS"]}, "openshift.project": {"read": ["cost-management"]}}
-    )
+    @RbacPermissions({"openshift.cluster": {"read": ["OCP-on-AWS"]}, "openshift.project": {"read": ["koku"]}})
     def test_openshift_project_with_cluster_and_project_access_view(self):
         """Test endpoint runs with a customer owner."""
         with schema_context(self.schema_name):
@@ -74,7 +72,7 @@ class ResourceTypesViewTestOpenshiftProjects(IamTestCase):
                 OCPCostSummaryByProject.objects.annotate(**{"value": F("namespace")})
                 .values("value")
                 .distinct()
-                .filter(namespace__in=["cost-management"], cluster_id__in=["OCP-on-AWS"])
+                .filter(namespace__in=["koku"], cluster_id__in=["OCP-on-AWS"])
                 .count()
             )
         # check that the expected is not zero
@@ -108,7 +106,7 @@ class ResourceTypesViewTestOpenshiftProjects(IamTestCase):
         self.assertIsInstance(json_result.get("data"), list)
         self.assertEqual(len(json_result.get("data")), expected)
 
-    @RbacPermissions({"openshift.cluster": {"read": ["*"]}, "openshift.project": {"read": ["cost-management"]}})
+    @RbacPermissions({"openshift.cluster": {"read": ["*"]}, "openshift.project": {"read": ["koku"]}})
     def test_openshift_project_with_all_cluster_and_project_access_view(self):
         """Test endpoint runs with a customer owner."""
         with schema_context(self.schema_name):
@@ -116,7 +114,7 @@ class ResourceTypesViewTestOpenshiftProjects(IamTestCase):
                 OCPCostSummaryByProject.objects.annotate(**{"value": F("namespace")})
                 .values("value")
                 .distinct()
-                .filter(namespace__in=["cost-management"])
+                .filter(namespace__in=["koku"])
                 .count()
             )
         # check that the expected is not zero

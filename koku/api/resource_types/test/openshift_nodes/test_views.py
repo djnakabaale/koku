@@ -22,7 +22,7 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         super().setUp()
         self.client = APIClient()
 
-    @RbacPermissions({"openshift.node": {"read": ["aws_compute_1"]}})
+    @RbacPermissions({"openshift.node": {"read": ["node_1"]}})
     def test_openshift_node_with_node_access_view(self):
         """Test endpoint runs with a customer owner."""
         with schema_context(self.schema_name):
@@ -30,7 +30,7 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
                 OCPCostSummaryByNode.objects.annotate(**{"value": F("node")})
                 .values("value")
                 .distinct()
-                .filter(node__in=["aws_compute_1"])
+                .filter(node__in=["node_1"])
                 .count()
             )
         self.assertTrue(expected)
@@ -62,7 +62,7 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         self.assertIsInstance(json_result.get("data"), list)
         self.assertEqual(len(json_result.get("data")), expected)
 
-    @RbacPermissions({"openshift.cluster": {"read": ["OCP-on-AWS"]}, "openshift.node": {"read": ["aws_compute_1"]}})
+    @RbacPermissions({"openshift.cluster": {"read": ["OCP-on-AWS"]}, "openshift.node": {"read": ["node_1"]}})
     def test_openshift_node_with_cluster_and_node_access_view(self):
         """Test endpoint runs with a customer owner."""
         with schema_context(self.schema_name):
@@ -70,7 +70,7 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
                 OCPCostSummaryByNode.objects.annotate(**{"value": F("node")})
                 .values("value")
                 .distinct()
-                .filter(node__in=["aws_compute_1"], cluster_id__in=["OCP-on-AWS"])
+                .filter(node__in=["node_1"], cluster_id__in=["OCP-on-AWS"])
                 .count()
             )
         self.assertTrue(expected)
@@ -102,7 +102,7 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         self.assertIsInstance(json_result.get("data"), list)
         self.assertEqual(len(json_result.get("data")), expected)
 
-    @RbacPermissions({"openshift.cluster": {"read": ["*"]}, "openshift.node": {"read": ["aws_compute_1"]}})
+    @RbacPermissions({"openshift.cluster": {"read": ["*"]}, "openshift.node": {"read": ["node_1"]}})
     def test_openshift_node_with_all_cluster_and_node_access_view(self):
         """Test endpoint runs with a customer owner."""
         with schema_context(self.schema_name):
@@ -110,7 +110,7 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
                 OCPCostSummaryByNode.objects.annotate(**{"value": F("node")})
                 .values("value")
                 .distinct()
-                .filter(node__in=["aws_compute_1"])
+                .filter(node__in=["node_1"])
                 .count()
             )
         self.assertTrue(expected)
