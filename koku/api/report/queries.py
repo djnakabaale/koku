@@ -13,6 +13,7 @@ from collections import OrderedDict
 from decimal import Decimal
 from decimal import DivisionByZero
 from decimal import InvalidOperation
+from functools import cached_property
 from itertools import groupby
 from json import dumps as json_dumps
 from urllib.parse import quote_plus
@@ -73,24 +74,25 @@ class ReportQueryHandler(QueryHandler):
         super().__init__(parameters)
 
         self._tag_keys = parameters.tag_keys
-        self._report_type = parameters.report_type
+        if not hasattr(self, "_report_type"):
+            self._report_type = parameters.report_type
         self._delta = parameters.delta
         self._offset = parameters.get_filter("offset", default=0)
         self.query_delta = {"value": None, "percent": None}
 
         self.query_filter = self._get_filter()
 
-    @property
+    @cached_property
     def query_table_access_keys(self):
         """Return the access keys specific for selecting the query table."""
         return set(self.parameters.get("access", {}).keys())
 
-    @property
+    @cached_property
     def query_table_group_by_keys(self):
         """Return the group by keys specific for selecting the query table."""
         return set(self.parameters.get("group_by", {}).keys())
 
-    @property
+    @cached_property
     def query_table_filter_keys(self):
         """Return the filter keys specific for selecting the query table."""
         excluded_filters = {"time_scope_value", "time_scope_units", "resolution", "limit", "offset"}
@@ -102,12 +104,10 @@ class ReportQueryHandler(QueryHandler):
         """Return annotations with the correct capacity field."""
         return self._mapper.report_type_map.get("annotations", {})
 
-    @property
+    @cached_property
     def query_table(self):
         """Return the database table or view to query against."""
         query_table = self._mapper.query_table
-        if self.is_csv_output:
-            return query_table
         report_type = self._report_type
         report_group = "default"
 
@@ -362,22 +362,13 @@ class ReportQueryHandler(QueryHandler):
         for filter_map in self._mapper._report_type_map.get("filter"):
             filters.add(**filter_map)
 
-        if self.query_table == self._mapper.query_table and "gcp/storage" in self.parameters.request.path:
-            filters.add(
-                **{
-                    "field": "service_alias",
-                    "operation": "in",
-                    "parameter": ["Filestore", "Storage", "Cloud Storage", "Data Transfer"],
-                }
-            )
-
         # define filter parameters using API query params.
         composed_filters = self._get_search_filter(filters)
 
         LOG.debug(f"_get_filter: {composed_filters}")
         return composed_filters
 
-    def _get_group_by(self):  # noqa: C901
+    def _get_group_by(self):
         """Create list for group_by parameters."""
         group_by = []
         for item in self.group_by_options:
@@ -410,14 +401,7 @@ class ReportQueryHandler(QueryHandler):
         inherent_group_by = self._mapper._report_type_map.get("group_by")
         if inherent_group_by and not (group_by and self._limit):
             group_by = group_by + list(set(inherent_group_by) - set(group_by))
-        if self.is_csv_output:
-            add_tags = True
-            for entry in group_by:
-                if self._mapper.tag_column in entry:
-                    # There is already a specific tag group_by
-                    add_tags = False
-            if add_tags:
-                group_by.append(self._mapper.tag_column)
+
         return group_by
 
     def _get_tag_group_by(self):

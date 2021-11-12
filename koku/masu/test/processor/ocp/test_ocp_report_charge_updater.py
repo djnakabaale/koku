@@ -372,6 +372,8 @@ class OCPCostModelCostUpdaterTest(MasuTestCase):
                 .values_list("node", "node_capacity_cpu_core_hours", "cluster_capacity_cpu_core_hours")
             )
             for node in nodes:
+                if node[1] is None:
+                    continue
                 monthly_cost_row = OCPUsageLineItemDailySummary.objects.filter(
                     infrastructure_monthly_cost_json__isnull=False, node=node[0], usage_start__gte=start_date
                 ).first()
@@ -517,6 +519,7 @@ class OCPCostModelCostUpdaterTest(MasuTestCase):
             self.cluster_id,
             updater._cluster_alias,
             "cpu",
+            self.ocp_provider_uuid,
         )
 
     @patch("masu.database.ocp_report_db_accessor.OCPReportDBAccessor.populate_monthly_tag_cost")
@@ -553,6 +556,7 @@ class OCPCostModelCostUpdaterTest(MasuTestCase):
             self.cluster_id,
             updater._cluster_alias,
             distribution,
+            self.ocp_provider_uuid,
         )
         mock_update_monthly.assert_any_call(
             "Node",
@@ -563,6 +567,7 @@ class OCPCostModelCostUpdaterTest(MasuTestCase):
             self.cluster_id,
             updater._cluster_alias,
             distribution,
+            self.ocp_provider_uuid,
         )
 
         self.assertEqual(mock_update_monthly.call_count, 2)
@@ -596,6 +601,7 @@ class OCPCostModelCostUpdaterTest(MasuTestCase):
             self.cluster_id,
             updater._cluster_alias,
             distribution,
+            self.ocp_provider_uuid,
         )
 
     @patch("masu.database.ocp_report_db_accessor.OCPReportDBAccessor.populate_tag_usage_costs")

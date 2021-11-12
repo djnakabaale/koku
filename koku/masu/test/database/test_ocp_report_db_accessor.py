@@ -707,6 +707,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
                     self.cluster_id,
                     cluster_alias,
                     distribution,
+                    self.provider_uuid,
                 )
                 monthly_cost_rows = (
                     self.accessor._get_db_obj_query(OCPUsageLineItemDailySummary)
@@ -788,6 +789,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
                     self.cluster_id,
                     cluster_alias,
                     distribution,
+                    self.provider_uuid,
                 )
                 monthly_cost_rows = (
                     self.accessor._get_db_obj_query(OCPUsageLineItemDailySummary)
@@ -858,6 +860,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
                     self.cluster_id,
                     cluster_alias,
                     distribution,
+                    self.provider_uuid,
                 )
 
                 monthly_cost_rows = (
@@ -911,6 +914,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
                     self.cluster_id,
                     cluster_alias,
                     distribution,
+                    self.provider_uuid,
                 )
 
                 monthly_cost_rows = (
@@ -971,6 +975,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
             self.cluster_id,
             cluster_alias,
             metric_constants.CPU_DISTRIBUTION,
+            self.provider_uuid,
         )
 
         monthly_cost_rows = (
@@ -1056,6 +1061,7 @@ class OCPReportDBAccessorTest(MasuTestCase):
             self.cluster_id,
             cluster_alias,
             metric_constants.CPU_DISTRIBUTION,
+            self.provider_uuid,
         )
 
         monthly_cost_rows = (
@@ -1135,7 +1141,15 @@ class OCPReportDBAccessorTest(MasuTestCase):
                 node_rate = random.randrange(1, 100)
                 rate_type = metric_constants.SUPPLEMENTARY_COST_TYPE
                 self.accessor.populate_monthly_cost(
-                    cost_type, rate_type, node_rate, start_date, end_date, self.cluster_id, cluster_alias, distribution
+                    cost_type,
+                    rate_type,
+                    node_rate,
+                    start_date,
+                    end_date,
+                    self.cluster_id,
+                    cluster_alias,
+                    distribution,
+                    self.provider_uuid,
                 )
                 monthly_cost_rows = (
                     self.accessor._get_db_obj_query(OCPUsageLineItemDailySummary)
@@ -1314,6 +1328,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         metric_constants.SUPPLEMENTARY_COST_TYPE,
                         rate,
                         distribution,
+                        self.provider_uuid,
                     )
                     summary_table_name = OCP_REPORT_TABLE_MAP["line_item_daily_summary"]
                     query = self.accessor._get_db_obj_query(summary_table_name)
@@ -1367,6 +1382,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
 
                     # assert that after the update, there are now the monthly values
@@ -1419,6 +1435,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
 
                     # assert that after the update, there are now the monthly values
@@ -1473,6 +1490,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
 
                     # assert that after the update, there are now the monthly values
@@ -1532,6 +1550,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
 
             # assert that after the update, there are now the monthly values
@@ -1594,6 +1613,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
                     # assert that after the update, there are now the monthly values for
                     # the three different nodes that have a value
@@ -1654,6 +1674,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
             # assert that after the update, there are now the monthly values for
             # the three different PVCs that have a value
@@ -1702,6 +1723,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
 
             # assert that after the update, there is now the cluster cost for the PVC
@@ -1755,6 +1777,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
             # assert that after the update, there are now the monthly values
             # for the PVC's
@@ -1810,6 +1833,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
                     # assert that after the update, there are still no monthly costs for nodes in supplementary
                     self.assertEqual(qset.count(), 0)
@@ -1859,6 +1883,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
             # assert that after the update, there are still no monthly costs for nodes in supplementary
             self.assertEqual(qset.count(), 0)
@@ -1914,6 +1939,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
             # assert that after the update, there are still no node costs since the key_value pairs did not match
             self.assertEqual(qset.count(), 0)
@@ -1968,6 +1994,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
                     # assert that after the update, there is now the value for the cluster we specified
                     self.assertEqual(qset.count(), 1)
@@ -2029,6 +2056,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
                     # assert that after the update, there is now the value for the cluster we specified
                     self.assertEqual(qset.count(), 1)
@@ -2090,6 +2118,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
                     # assert that after the update, there is now the value for the cluster we specified
                     self.assertEqual(qset.count(), 1)
@@ -2139,6 +2168,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
 
                     # assert that after the update, there is now the cluster cost
@@ -2192,6 +2222,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
 
                     # assert that after the update, there is now the cluster cost
@@ -2243,6 +2274,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
 
                     # assert that after the update, there are now the monthly values
@@ -2300,6 +2332,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                         self.cluster_id,
                         c_a,
                         distribution,
+                        self.provider_uuid,
                     )
                     # assert that after the update, there are still no monthly costs for cluster in supplementary
                     self.assertEqual(qset.count(), 0)
@@ -2355,6 +2388,7 @@ select * from eek where val1 in {{report_period_ids}} ;
                 self.cluster_id,
                 c_a,
                 metric_constants.CPU_DISTRIBUTION,
+                self.provider_uuid,
             )
             # assert that after the update, there are still no node costs since the key_value pairs did not match
             self.assertEqual(qset.count(), 0)
