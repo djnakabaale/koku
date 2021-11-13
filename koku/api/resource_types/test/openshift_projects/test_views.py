@@ -22,7 +22,7 @@ class ResourceTypesViewTestOpenshiftProjects(IamTestCase):
         super().setUp()
         self.client = APIClient()
 
-    @RbacPermissions({"openshift.project": {"read": ["cost-management"]}})
+    @RbacPermissions({"openshift.project": {"read": ["koku"]}})
     def test_openshift_project_with_project_access_view(self):
         """Test endpoint runs with a customer owner."""
         with schema_context(self.schema_name):
@@ -30,7 +30,7 @@ class ResourceTypesViewTestOpenshiftProjects(IamTestCase):
                 OCPCostSummaryByProjectP.objects.annotate(**{"value": F("namespace")})
                 .values("value")
                 .distinct()
-                .filter(namespace__in=["cost-management"])
+                .filter(namespace__in=["koku"])
                 .count()
             )
         # check that the expected is not zero

@@ -26,7 +26,7 @@ AWS_PRODUCT_FAMILIES = (
 )
 AWS_INSTANCE_TYPES = ("db.t3.medium", "db.r5.2xlarge", None, None, "m5.large", "r4.large", "t2.micro")
 AWS_RESOURCE_COUNTS = (1, 1, 0, 0, 1, 1, 1)
-AWS_INSTANCE_IDS = ("i-11111111", "i-22222222", None, None, "i-33333333", "i-44444444", "i-55555555")
+AWS_INSTANCE_IDS = (["i-11111111"], ["i-22222222"], [None], [None], ["i-33333333"], ["i-44444444"], ["i-55555555"])
 AWS_UNITS = ("Hrs", "Hrs", "GB-Mo", "Hrs", "Hrs", "Hrs", "Hrs")
 # AWS_SERVICES = (
 #     (

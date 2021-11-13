@@ -626,7 +626,7 @@ class AWSReportQueryTest(IamTestCase):
             month_data = data_item.get("accounts")
             self.assertEqual(month_val, cmonth_str)
             self.assertIsInstance(month_data, list)
-            self.assertEqual(len(month_data), 6)
+            self.assertEqual(len(month_data), 7)
             current_total = 0
             for month_item in month_data:
                 self.assertIsInstance(month_item.get("account"), str)
@@ -917,14 +917,14 @@ class AWSReportQueryTest(IamTestCase):
 
         self.assertIsNotNone(result_delta_percent)
         self.assertIsNotNone(result_delta_value)
-        self.assertEqual(result_delta_value, expected_delta_value)
-        self.assertEqual(result_delta_percent, expected_delta_percent)
+        self.assertAlmostEqual(result_delta_value, expected_delta_value, 6)
+        self.assertAlmostEqual(result_delta_percent, expected_delta_percent, 6)
 
         delta = query_output.get("delta")
         self.assertIsNotNone(delta.get("value"))
         self.assertIsNotNone(delta.get("percent"))
-        self.assertEqual(delta.get("value"), expected_delta_value)
-        self.assertEqual(delta.get("percent"), expected_delta_percent)
+        self.assertAlmostEqual(delta.get("value"), expected_delta_value, 6)
+        self.assertAlmostEqual(delta.get("percent"), expected_delta_percent, 6)
 
     def test_execute_query_w_delta_no_previous_data(self):
         """Test deltas with no previous data."""
@@ -1484,9 +1484,11 @@ class AWSReportQueryTest(IamTestCase):
         tag_keys = ["tag:" + tag for tag in tag_keys]
 
         with tenant_context(self.tenant):
-            totals = AWSCostEntryLineItemDailySummary.objects.filter(
-                usage_start__gte=self.dh.this_month_start
-            ).aggregate(**{"cost": Sum(F("unblended_cost") + F("markup_cost"))})
+            totals = (
+                AWSCostEntryLineItemDailySummary.objects.filter(usage_start__gte=self.dh.this_month_start)
+                .filter(**{"tags__has_key": filter_key})
+                .aggregate(**{"cost": Sum(F("unblended_cost") + F("markup_cost"))})
+            )
 
         url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&filter[tag:{filter_key}]=*"  # noqa: E501
         query_params = self.mocked_query_params(url, AWSCostView)
@@ -1505,10 +1507,13 @@ class AWSReportQueryTest(IamTestCase):
         group_by_key = tag_keys[0]
         tag_keys = ["tag:" + tag for tag in tag_keys]
 
+        # TODO: this doesn't seem correct...
         with tenant_context(self.tenant):
-            totals = AWSCostEntryLineItemDailySummary.objects.filter(
-                usage_start__gte=self.dh.this_month_start
-            ).aggregate(**{"cost": Sum(F("unblended_cost") + F("markup_cost"))})
+            totals = (
+                AWSCostEntryLineItemDailySummary.objects.filter(usage_start__gte=self.dh.this_month_start)
+                .filter(**{"tags__has_key": group_by_key})
+                .aggregate(**{"cost": Sum(F("unblended_cost") + F("markup_cost"))})
+            )
 
         url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[tag:{group_by_key}]=*"  # noqa: E501
         query_params = self.mocked_query_params(url, AWSCostView)
