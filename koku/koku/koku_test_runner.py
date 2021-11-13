@@ -13,6 +13,7 @@ from django.conf import settings
 from django.db import connections
 from django.test.runner import DiscoverRunner
 from django.test.utils import get_unique_databases_and_mirrors
+from model_bakery import baker
 from scripts.insert_org_tree import UploadAwsTree
 
 from api.models import Customer

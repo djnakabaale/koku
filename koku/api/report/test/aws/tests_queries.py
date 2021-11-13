@@ -1494,7 +1494,7 @@ class AWSReportQueryTest(IamTestCase):
         data = handler.execute_query()
         data_totals = data.get("total", {})
         result = data_totals.get("cost", {}).get("total", {}).get("value")
-        self.assertEqual(result, totals["cost"])
+        self.assertAlmostEqual(result, totals["cost"], 6)
 
     def test_execute_query_with_tag_group_by(self):
         """Test that data is grouped by tag key."""
@@ -1521,7 +1521,7 @@ class AWSReportQueryTest(IamTestCase):
         for entry in data:
             self.assertEqual(list(entry.keys()), expected_keys)
         result = data_totals.get("cost", {}).get("total", {}).get("value")
-        self.assertEqual(totals["cost"], result)
+        self.assertAlmostEqual(totals["cost"], result, 6)
 
     def test_execute_query_return_others_with_tag_group_by(self):
         """Test that data is grouped by tag key."""
