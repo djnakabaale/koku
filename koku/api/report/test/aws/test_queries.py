@@ -1507,13 +1507,10 @@ class AWSReportQueryTest(IamTestCase):
         group_by_key = tag_keys[0]
         tag_keys = ["tag:" + tag for tag in tag_keys]
 
-        # TODO: this doesn't seem correct...
         with tenant_context(self.tenant):
-            totals = (
-                AWSCostEntryLineItemDailySummary.objects.filter(usage_start__gte=self.dh.this_month_start)
-                .filter(**{"tags__has_key": group_by_key})
-                .aggregate(**{"cost": Sum(F("unblended_cost") + F("markup_cost"))})
-            )
+            totals = AWSCostEntryLineItemDailySummary.objects.filter(
+                usage_start__gte=self.dh.this_month_start
+            ).aggregate(**{"cost": Sum(F("unblended_cost") + F("markup_cost"))})
 
         url = f"?filter[time_scope_units]=month&filter[time_scope_value]=-1&filter[resolution]=monthly&group_by[tag:{group_by_key}]=*"  # noqa: E501
         query_params = self.mocked_query_params(url, AWSCostView)
