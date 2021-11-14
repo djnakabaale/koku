@@ -585,13 +585,11 @@ class AWSReportViewTest(IamTestCase):
                 for instance_type in day.get("instance_types", []):
                     values = instance_type.get("values", [])
                     if values:
-                        current_delta = values[0].get("delta_value")
+                        current_delta = values[0].get("delta_percent")
                         if previous_delta:
                             self.assertLessEqual(previous_delta, current_delta)
                             compared_deltas = True
-                            previous_delta = current_delta
-                        else:
-                            previous_delta = current_delta
+                        previous_delta = current_delta
             self.assertTrue(compared_deltas)
 
     def test_others_count(self):

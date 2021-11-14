@@ -579,7 +579,7 @@ class OCPReportViewTest(IamTestCase):
                 )
                 .get("total")
             )
-            expected_total = cost if cost is not None else 0
+            expected_total = cost or 0
         total = data.get("meta", {}).get("total", {}).get("cost", {}).get("total", {}).get("value", 0)
         self.assertNotEqual(total, Decimal(0))
         self.assertAlmostEqual(total, expected_total, 6)

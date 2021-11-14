@@ -96,6 +96,7 @@ class IamTestCase(TestCase):
         """Create user data."""
         access = {
             "aws.account": {"read": ["*"]},
+            "aws.organizational_unit": {"read": ["*"]},
             "gcp.account": {"read": ["*"]},
             "gcp.project": {"read": ["*"]},
             "azure.subscription_guid": {"read": ["*"]},

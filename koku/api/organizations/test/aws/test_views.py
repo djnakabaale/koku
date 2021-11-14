@@ -108,15 +108,13 @@ class AWSReportViewTest(IamTestCase):
     def test_moved_account(self):
         """Test that the moved account only shows up in new location."""
         moved_account = "account 003"
-        previous_ou = "OU_002"
-        previous_url = self.url + f"?filter[org_unit_id]={previous_ou}"
+        previous_url = self.url + "?filter[org_unit_id]=OU_002"
         response = self.client.get(previous_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]
         self.assertNotIn(moved_account, data_row.get("accounts"))
 
-        current_ou = "OU_003"
-        current_url = self.url + f"?filter[org_unit_id]={current_ou}"
+        current_url = self.url + "?filter[org_unit_id]=OU_003"
         response = self.client.get(current_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]
@@ -125,15 +123,13 @@ class AWSReportViewTest(IamTestCase):
     def test_moved_ou(self):
         """Test that the move ou only shows up in new location."""
         moved_child_ou = "OU_005"
-        previous_parent = "OU_002"
-        previous_url = self.url + f"?filter[org_unit_id]={previous_parent}"
+        previous_url = self.url + "?filter[org_unit_id]=OU_002"
         response = self.client.get(previous_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]
         self.assertNotIn(moved_child_ou, data_row.get("sub_orgs"))
 
-        new_parent = "OU_001"
-        new_parent_url = self.url + f"?filter[org_unit_id]={new_parent}"
+        new_parent_url = self.url + "?filter[org_unit_id]=OU_001"
         response = self.client.get(new_parent_url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data_row = response.data.get("data")[0]

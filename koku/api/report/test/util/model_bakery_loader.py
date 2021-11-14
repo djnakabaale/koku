@@ -86,9 +86,13 @@ class ModelBakeryDataLoader(DataLoader):
 
     def _populate_enabled_tag_key_table(self):
         """Insert records for our tag keys."""
-        for table_name in ("AWSEnabledTagKeys", "AzureEnabledTagKeys", "GCPEnabledTagKeys", "OCPEnabledTagKeys"):
-            with schema_context(self.schema):
-                baker.make(table_name, key=self.tag_test_tag_key)
+        for table_name in ("AWSEnabledTagKeys", "AzureEnabledTagKeys", "GCPEnabledTagKeys"):
+            for dikt in self.tags:
+                for key in dikt.keys():
+                    with schema_context(self.schema):
+                        baker.make(table_name, key=key)
+        with schema_context(self.schema):
+            baker.make("OCPEnabledTagKeys", key=self.tag_test_tag_key)
 
     def create_provider(self, provider_type, credentials, billing_source, name, linked_openshift_provider=None):
         """Create a Provider record"""
@@ -206,8 +210,8 @@ class ModelBakeryDataLoader(DataLoader):
                 self.create_cost_entry(provider_type, bill_date, bill)
                 days = (end_date - start_date).days
                 for i in range(days):
-                    baker.make(
-                        "AWSCostEntryLineItemDailySummary",
+                    baker.make_recipe(  # Storage data_source
+                        "api.report.test.util.aws_daily_summary",
                         cost_entry_bill=bill,
                         usage_account_id=cycle(usage_account_ids),
                         account_alias=cycle(aliases),
@@ -215,14 +219,6 @@ class ModelBakeryDataLoader(DataLoader):
                         currency_code=self.currency,
                         usage_start=start_date + timedelta(i),
                         usage_end=start_date + timedelta(i),
-                        product_code=cycle(constants.AWS_PRODUCT_CODES),
-                        product_family=cycle(constants.AWS_PRODUCT_FAMILIES),
-                        instance_type=cycle(constants.AWS_INSTANCE_TYPES),
-                        resource_count=cycle(constants.AWS_RESOURCE_COUNTS),
-                        resource_ids=cycle(constants.AWS_INSTANCE_IDS),
-                        unit=cycle(constants.AWS_UNITS),
-                        region=cycle(constants.AWS_REGIONS),
-                        availability_zone=cycle(constants.AWS_AVAILABILITY_ZONES),
                         tags=cycle(self.tags),
                         source_uuid=provider.uuid,
                         _fill_optional=True,
@@ -366,7 +362,7 @@ class ModelBakeryDataLoader(DataLoader):
                         source_uuid=provider.uuid,
                         infrastructure_raw_cost=infra_raw_cost,
                         infrastructure_project_raw_cost=project_infra_raw_cost,
-                        _quantity=6,
+                        _quantity=len(constants.OCP_NAMESPACES),
                     )
                     baker.make_recipe(  # Pod data_source
                         "api.report.test.util.ocp_usage_pod",
@@ -382,7 +378,7 @@ class ModelBakeryDataLoader(DataLoader):
                         source_uuid=provider.uuid,
                         infrastructure_raw_cost=infra_raw_cost,
                         infrastructure_project_raw_cost=project_infra_raw_cost,
-                        _quantity=6,
+                        _quantity=len(constants.OCP_NAMESPACES),
                     )
             OCPReportDBAccessor(self.schema).populate_pod_label_summary_table([report_period.id], start_date, end_date)
             OCPReportDBAccessor(self.schema).populate_volume_label_summary_table(

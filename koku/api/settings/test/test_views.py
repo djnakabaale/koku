@@ -6,9 +6,11 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
+from tenant_schemas.utils import schema_context
 
 from api.iam.test.iam_test_case import IamTestCase
 from api.utils import DateHelper
+from reporting.models import AWSTagsSummary
 
 
 class SettingsViewTest(IamTestCase):
@@ -24,15 +26,13 @@ class SettingsViewTest(IamTestCase):
         """Request settings from API."""
         url = reverse("settings")
         client = APIClient()
-        response = client.get(url, **self.headers)
-        return response
+        return client.get(url, **self.headers)
 
     def post_settings(self, body):
         """Request settings from API."""
         url = reverse("settings")
         client = APIClient()
-        response = client.post(url, data=body, format="json", **self.headers)
-        return response
+        return client.post(url, data=body, format="json", **self.headers)
 
     def get_duallist_from_response(self, response):
         """Utility to get dual list object from response."""
@@ -42,11 +42,9 @@ class SettingsViewTest(IamTestCase):
         primary_object = data[0]
         tg_mngmnt_subform_fields = primary_object.get("fields")
         self.assertIsNotNone(tg_mngmnt_subform_fields)
-        fields_len = 3
-        self.assertEqual(len(tg_mngmnt_subform_fields), fields_len)
         for element in tg_mngmnt_subform_fields:
             component_name = element.get("component")
-            if component_name == f'{"dual-list-select"}':
+            if component_name == "dual-list-select":
                 return element
 
     def test_get_settings_tag_enabled(self):
@@ -64,54 +62,57 @@ class SettingsViewTest(IamTestCase):
         all_enabled_tags = duallist.get("initialValue")
 
         for test in test_matrix:
-            available = []
-            enabled_tags = []
+            with self.subTest(test=test.get("name")):
+                available = []
 
-            # get available tags
-            for option in duallist.get("options"):
-                if option.get("label") == test.get("label"):
-                    children = option.get("children")
-                    available = [key_obj.get("label") for key_obj in children]
+                # get available tags
+                for option in duallist.get("options"):
+                    if option.get("label") == test.get("label"):
+                        children = option.get("children")
+                        available = [key_obj.get("label") for key_obj in children]
+                        break
 
-            for enabled in all_enabled_tags:
-                if enabled.split("-")[0] == test.get("name"):
-                    enabled_tags.append(enabled.split("-")[1])
-                    self.assertIn(enabled.split("-")[1], available)
+                for enabled in all_enabled_tags:
+                    source, label = enabled.split("-", 1)
+                    if source == test.get("name"):
+                        self.assertIn(label, available)
 
     def test_post_settings_tag_enabled(self):
         """Test settings POST calls change enabled tags"""
+        with schema_context(self.schema_name):
+            aws_tags = list(set(AWSTagsSummary.objects.values_list("key", flat=True)).difference({"app"}))
+
         test_matrix = [
             {
                 "name": "test01",
                 "enabled_tags": [
                     "aws-app",
-                    "aws-environment",
-                    "openshift-environment",
+                    f"aws-{aws_tags[0]}",
+                    "openshift-app",
                     "openshift-storageclass",
-                    "openshift-version",
+                    "openshift-disabled",
                 ],
             },
-            {"name": "test02", "enabled_tags": ["aws-environment", "openshift-storageclass", "openshift-version"]},
-            {"name": "test03", "enabled_tags": ["openshift-storageclass", "openshift-version"]},
-            {"name": "test04", "enabled_tags": ["openshift-version"]},
+            {"name": "test02", "enabled_tags": [f"aws-{aws_tags[0]}", "openshift-storageclass", "openshift-app"]},
+            {"name": "test03", "enabled_tags": ["openshift-storageclass", "openshift-app"]},
+            {"name": "test04", "enabled_tags": ["openshift-app"]},
         ]
 
         for test in test_matrix:
-            enabled_tags = test.get("enabled_tags")
+            with self.subTest(test=test.get("name")):
+                enabled_tags = test.get("enabled_tags")
 
-            body = {"api": {"settings": {"tag-management": {"enabled": enabled_tags}}}}
-            response = self.post_settings(body)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+                body = {"api": {"settings": {"tag-management": {"enabled": enabled_tags}}}}
+                response = self.post_settings(body)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-            response = self.get_settings()
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+                response = self.get_settings()
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-            duallist = self.get_duallist_from_response(response)
-            resp_enabled_tags = duallist.get("initialValue")
-            self.assertEqual(len(resp_enabled_tags), len(enabled_tags))
-
-            for tag in enabled_tags:
-                self.assertIn(tag, resp_enabled_tags)
+                duallist = self.get_duallist_from_response(response)
+                resp_enabled_tags = duallist.get("initialValue")
+                self.assertEqual(len(resp_enabled_tags), len(enabled_tags))
+                self.assertCountEqual(resp_enabled_tags, enabled_tags)
 
     def test_post_settings_ocp_tag_enabled_invalid_tag(self):
         """Test setting OCP tags as enabled with invalid tag key."""

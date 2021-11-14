@@ -149,7 +149,7 @@ class GCPTagQueryHandlerTest(IamTestCase):
         query_params = self.mocked_query_params(url, GCPTagView)
         handler = GCPTagQueryHandler(query_params)
         with tenant_context(self.tenant):
-            tags = GCPTagsSummary.objects.filter(key__contains=key).values("values").distinct().all()
+            tags = GCPTagsSummary.objects.filter(key__exact=key).values("values").distinct().all()
             tag_values = tags[0].get("values")
         expected = {"key": key, "values": tag_values}
         result = handler.get_tags()
