@@ -709,26 +709,18 @@ class OCPReportDBAccessorTest(MasuTestCase):
                     distribution,
                     self.provider_uuid,
                 )
-                monthly_cost_rows = (
-                    self.accessor._get_db_obj_query(OCPUsageLineItemDailySummary)
-                    .filter(
-                        usage_start=first_month,
-                        infrastructure_monthly_cost_json__isnull=False,
-                        report_period__provider_id=self.ocp_on_prem_provider.uuid,
-                        monthly_cost_type="Node",
-                    )
-                    .all()
-                )
-                monthly_project_cost_rows = (
-                    self.accessor._get_db_obj_query(OCPUsageLineItemDailySummary)
-                    .filter(
-                        usage_start=first_month,
-                        infrastructure_project_monthly_cost__isnull=False,
-                        report_period__provider_id=self.ocp_on_prem_provider.uuid,
-                        monthly_cost_type="Node",
-                    )
-                    .all()
-                )
+                monthly_cost_rows = OCPUsageLineItemDailySummary.objects.filter(
+                    report_period__provider_id=self.ocp_on_prem_provider.uuid,
+                    usage_start=first_month,
+                    infrastructure_monthly_cost_json__isnull=False,
+                    monthly_cost_type="Node",
+                ).all()
+                monthly_project_cost_rows = OCPUsageLineItemDailySummary.objects.filter(
+                    usage_start=first_month,
+                    infrastructure_project_monthly_cost__isnull=False,
+                    report_period__provider_id=self.ocp_on_prem_provider.uuid,
+                    monthly_cost_type="Node",
+                ).all()
                 with schema_context(self.schema):
                     # Test infrastructure monthly node distrbution
                     expected_count = (
@@ -760,11 +752,10 @@ class OCPReportDBAccessorTest(MasuTestCase):
                         .count()
                     )
                     self.assertEquals(monthly_project_cost_rows.count(), expected_project_count)
-                    monthly_project_cost = []
-                    for monthly_project_cost_row in monthly_project_cost_rows:
-                        monthly_project_cost.append(
-                            monthly_project_cost_row.infrastructure_project_monthly_cost.get(distribution)
-                        )
+                    monthly_project_cost = [
+                        monthly_project_cost_row.infrastructure_project_monthly_cost.get(distribution)
+                        for monthly_project_cost_row in monthly_project_cost_rows
+                    ]
                     self.assertEquals(sum(monthly_project_cost), expected_project_value)
 
     def test_populate_monthly_cost_node_supplementary_cost(self):

@@ -3,12 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 """Test utilities."""
-import json
-import pkgutil
 import random
 from datetime import timedelta
 from functools import partial
 from itertools import cycle
+from itertools import product
 
 from django.test.utils import override_settings
 from faker import Faker
@@ -18,6 +17,8 @@ from tenant_schemas.utils import schema_context
 from api.models import Provider
 from api.provider.models import ProviderBillingSource
 from api.report.test.util import constants
+from api.report.test.util.constants import AWS_CONSTANTS
+from api.report.test.util.constants import OCP_ON_PREM_COST_MODEL
 from api.report.test.util.data_loader import DataLoader
 from masu.database.aws_report_db_accessor import AWSReportDBAccessor
 from masu.database.azure_report_db_accessor import AzureReportDBAccessor
@@ -43,23 +44,6 @@ BILL_MODELS = {
 }
 
 
-def aws_service_gen():
-    account_alias = random.choice(list(AWSAccountAlias.objects.all()))
-    idx = random.randint(0, len(constants.AWS_PRODUCT_CODES) - 1)
-    return {
-        "product_code": constants.AWS_PRODUCT_CODES[idx],
-        "product_family": constants.AWS_PRODUCT_FAMILIES[idx],
-        "unit": constants.AWS_UNITS[idx],
-        "account_alias": account_alias,
-    }
-
-
-def azure_service_gen():
-    # subscription_guid = random.choice(list(AWSOrganizationalUnit.objects.all()))
-    service = random.choice(constants.AZURE_SERVICES)
-    return {"service_name": service[0], "unit_of_measure": service[2] or None}
-
-
 class ModelBakeryDataLoader(DataLoader):
     """Loads model bakery generated test data for different source types."""
 
@@ -72,8 +56,6 @@ class ModelBakeryDataLoader(DataLoader):
         self.tags = [{"app": self.faker.slug()}] + [{key: self.faker.slug()} for key in self.tag_keys]
         self.tag_test_tag_key = "app"
         self._populate_enabled_tag_key_table()
-        self.namespaces = list(constants.OCP_NAMESPACES[:])
-        random.shuffle(self.namespaces)
 
     def _get_bill_model(self, provider_type):
         """Return the correct model for a provider type."""
@@ -156,16 +138,13 @@ class ModelBakeryDataLoader(DataLoader):
 
     def create_cost_model(self, provider):
         """Create a cost model and map entry."""
-        cost_model_json = json.loads(
-            pkgutil.get_data("api.report.test", "openshift_on_prem_cost_model.json").decode("utf8")
-        )
         with schema_context(self.schema):
             cost_model = baker.make(
                 "CostModel",
-                name=cost_model_json.get("name"),
-                description=cost_model_json.get("description"),
-                rates=cost_model_json.get("rates"),
-                distribution=cost_model_json.get("distribution"),
+                name=OCP_ON_PREM_COST_MODEL.get("name"),
+                description=OCP_ON_PREM_COST_MODEL.get("description"),
+                rates=OCP_ON_PREM_COST_MODEL.get("rates"),
+                distribution=OCP_ON_PREM_COST_MODEL.get("distribution"),
                 source_type=provider.type,
                 currency=self.currency,
                 _fill_optional=True,
@@ -221,12 +200,16 @@ class ModelBakeryDataLoader(DataLoader):
                         usage_end=start_date + timedelta(i),
                         tags=cycle(self.tags),
                         source_uuid=provider.uuid,
-                        _fill_optional=True,
-                        _quantity=max(len(constants.AWS_PRODUCT_CODES), len(aliases)),
+                        _bulk_create=True,
+                        _quantity=max(AWS_CONSTANTS.length, len(aliases)),
                     )
-            AWSReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
-            AWSReportDBAccessor(self.schema).populate_ui_summary_tables(start_date, end_date, provider.uuid)
-
+        bill_ids = [bill.id for bill in bills]
+        AWSReportDBAccessor(self.schema).populate_tags_summary_table(
+            bill_ids, self.first_start_date, self.last_end_date
+        )
+        AWSReportDBAccessor(self.schema).populate_ui_summary_tables(
+            self.first_start_date, self.last_end_date, provider.uuid
+        )
         return provider, bills
 
     def load_azure_data(self, linked_openshift_provider=None):
@@ -256,27 +239,23 @@ class ModelBakeryDataLoader(DataLoader):
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
-                    for service in constants.AZURE_SERVICES:
-                        instance = service[1]
-                        baker.make(
-                            "AzureCostEntryLineItemDailySummary",
-                            cost_entry_bill=bill,
-                            subscription_guid=sub_guid,
-                            usage_start=start_date + timedelta(i),
-                            usage_end=start_date + timedelta(i),
-                            service_name=service[0],
-                            instance_type=instance.get("type"),
-                            instance_ids=[instance.get("id")],
-                            instance_count=1 if instance.get("type") else 0,
-                            unit_of_measure=service[2] or None,
-                            resource_location="US East",
-                            tags=random.choice(self.tags),
-                            currency=self.currency,
-                            source_uuid=provider.uuid,
-                            _fill_optional=True,
-                        )
-            AzureReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
-            # AzureReportDBAccessor(self.schema).populate_ui_summary_tables(start_date, end_date, provider.uuid)
+                    baker.make_recipe(
+                        "api.report.test.util.azure_daily_summary",
+                        cost_entry_bill=bill,
+                        subscription_guid=sub_guid,
+                        usage_start=start_date + timedelta(i),
+                        usage_end=start_date + timedelta(i),
+                        tags=cycle(self.tags),
+                        currency=self.currency,
+                        source_uuid=provider.uuid,
+                        _bulk_create=True,
+                        _quantity=len(constants.AZURE_SERVICE_NAMES),
+                    )
+        bill_ids = [bill.id for bill in bills]
+        AzureReportDBAccessor(self.schema).populate_tags_summary_table(
+            bill_ids, self.first_start_date, self.last_end_date
+        )
+        # AzureReportDBAccessor(self.schema).populate_ui_summary_tables(start_date, end_date, provider.uuid)
         refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
         return provider, bills
 
@@ -297,30 +276,29 @@ class ModelBakeryDataLoader(DataLoader):
             bills.append(bill)
             with schema_context(self.schema):
                 days = (end_date - start_date).days
-                for i in range(days):
-                    for project in projects:
-                        for service in constants.GCP_SERVICES:
-                            baker.make(
-                                "GCPCostEntryLineItemDailySummary",
-                                cost_entry_bill=bill,
-                                invoice_month=bill_date.strftime("%Y%m"),
-                                account_id=account_id,
-                                project_id=project[0],
-                                project_name=project[1],
-                                usage_start=start_date + timedelta(i),
-                                usage_end=start_date + timedelta(i),
-                                service_id=service[0],
-                                service_alias=service[1],
-                                sku_id=service[0],
-                                sku_alias=service[2],
-                                unit=service[3],
-                                tags=random.choice(self.tags),
-                                currency=self.currency,
-                                source_uuid=provider.uuid,
-                                _fill_optional=True,
-                            )
-            GCPReportDBAccessor(self.schema).populate_tags_summary_table([bill.id], start_date, end_date)
-            # GCPReportDBAccessor(self.schema).populate_ui_summary_tables(start_date, end_date, provider.uuid)
+                for i, project in product(range(days), projects):
+                    baker.make_recipe(
+                        "api.report.test.util.gcp_daily_summary",
+                        cost_entry_bill=bill,
+                        invoice_month=bill_date.strftime("%Y%m"),
+                        account_id=account_id,
+                        project_id=project[0],
+                        project_name=project[1],
+                        usage_start=start_date + timedelta(i),
+                        usage_end=start_date + timedelta(i),
+                        tags=cycle(self.tags),
+                        currency=self.currency,
+                        source_uuid=provider.uuid,
+                        _bulk_create=True,
+                        _quantity=len(constants.GCP_SERVICE_IDS),
+                    )
+        bill_ids = [bill.id for bill in bills]
+        GCPReportDBAccessor(self.schema).populate_tags_summary_table(
+            bill_ids, self.first_start_date, self.last_end_date
+        )
+        # GCPReportDBAccessor(self.schema).populate_ui_summary_tables(
+        #     self.first_start_date, self.last_end_date, provider.uuid
+        # )
         refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)
         return provider, bills
 
@@ -350,18 +328,12 @@ class ModelBakeryDataLoader(DataLoader):
                         report_period=report_period,
                         cluster_id=cluster_id,
                         cluster_alias=cluster_id,
-                        node=baker.seq("node_"),
-                        resource_id=baker.seq("i-0000000"),
-                        namespace=cycle(constants.OCP_NAMESPACES),
-                        persistentvolumeclaim=baker.seq("pvc_"),
-                        persistentvolume=baker.seq("volume_"),
-                        storageclass=cycle(constants.OCP_STORAGE_CLASSES),
                         usage_start=start_date + timedelta(i),
                         usage_end=start_date + timedelta(i),
-                        volume_labels=cycle(constants.OCP_PVC_LABELS),
                         source_uuid=provider.uuid,
                         infrastructure_raw_cost=infra_raw_cost,
                         infrastructure_project_raw_cost=project_infra_raw_cost,
+                        _bulk_create=True,
                         _quantity=len(constants.OCP_NAMESPACES),
                     )
                     baker.make_recipe(  # Pod data_source
@@ -369,101 +341,97 @@ class ModelBakeryDataLoader(DataLoader):
                         report_period=report_period,
                         cluster_id=cluster_id,
                         cluster_alias=cluster_id,
-                        node=baker.seq("node_"),
-                        resource_id=baker.seq("i-0000000"),
-                        namespace=cycle(constants.OCP_NAMESPACES),
                         usage_start=start_date + timedelta(i),
                         usage_end=start_date + timedelta(i),
-                        pod_labels=cycle(constants.OCP_POD_LABELS),
                         source_uuid=provider.uuid,
                         infrastructure_raw_cost=infra_raw_cost,
                         infrastructure_project_raw_cost=project_infra_raw_cost,
+                        _bulk_create=True,
                         _quantity=len(constants.OCP_NAMESPACES),
                     )
-            OCPReportDBAccessor(self.schema).populate_pod_label_summary_table([report_period.id], start_date, end_date)
-            OCPReportDBAccessor(self.schema).populate_volume_label_summary_table(
-                [report_period.id], start_date, end_date
-            )
-            OCPReportDBAccessor(self.schema).update_line_item_daily_summary_with_enabled_tags(
-                start_date, end_date, [report_period.id]
-            )
-            OCPReportDBAccessor(self.schema).populate_ui_summary_tables(start_date, end_date, provider.uuid)
-            update_cost_model_costs(
-                self.schema, provider.uuid, start_date, end_date, tracing_id="12345", synchronous=True
-            )
+
+        report_period_ids = [report_period.id for report_period in report_periods]
+        OCPReportDBAccessor(self.schema).populate_pod_label_summary_table(
+            report_period_ids, self.first_start_date, self.last_end_date
+        )
+        OCPReportDBAccessor(self.schema).populate_volume_label_summary_table(
+            report_period_ids, self.first_start_date, self.last_end_date
+        )
+        OCPReportDBAccessor(self.schema).update_line_item_daily_summary_with_enabled_tags(
+            self.first_start_date, self.last_end_date, report_period_ids
+        )
+        OCPReportDBAccessor(self.schema).populate_ui_summary_tables(
+            self.first_start_date, self.last_end_date, provider.uuid
+        )
+        update_cost_model_costs(
+            self.schema, provider.uuid, self.first_start_date, self.last_end_date, tracing_id="12345", synchronous=True
+        )
         return provider, report_periods
 
     def load_openshift_on_cloud_data(self, provider_type, cluster_id, bills, report_periods):
         """Load OCP on AWS Daily Summary table."""
         unique_fields = {}
-        service_gen = lambda *args, **kwargs: {}  # noqa: E731
         if provider_type in (Provider.PROVIDER_AWS, Provider.PROVIDER_AWS_LOCAL):
-            daily_summary_table = "OCPAWSCostLineItemDailySummary"
-            project_summary_table = "OCPAWSCostLineItemProjectDailySummary"
-            update_method = partial(AWSReportDBAccessor(self.schema).populate_ocp_on_aws_tags_summary_table)
-            unique_fields = {"currency_code": self.currency}
-            service_gen = aws_service_gen
+            daily_summary_recipe = "api.report.test.util.ocp_on_aws_daily_summary"
+            project_summary_pod_recipe = "api.report.test.util.ocp_on_aws_project_daily_summary_pod"
+            project_summary_storage_recipe = "api.report.test.util.ocp_on_aws_project_daily_summary_storage"
+            tags_update_method = partial(AWSReportDBAccessor(self.schema).populate_ocp_on_aws_tags_summary_table)
+            with schema_context(self.schema):
+                account_alias = random.choice(list(AWSAccountAlias.objects.all()))
+            unique_fields = {"currency_code": self.currency, "account_alias": account_alias}
         elif provider_type in (Provider.PROVIDER_AZURE, Provider.PROVIDER_AZURE_LOCAL):
-            daily_summary_table = "OCPAzureCostLineItemDailySummary"
-            project_summary_table = "OCPAzureCostLineItemProjectDailySummary"
-            update_method = partial(AzureReportDBAccessor(self.schema).populate_ocp_on_azure_tags_summary_table)
+            daily_summary_recipe = "api.report.test.util.ocp_on_azure_daily_summary"
+            project_summary_pod_recipe = "api.report.test.util.ocp_on_azure_project_daily_summary_pod"
+            project_summary_storage_recipe = "api.report.test.util.ocp_on_azure_project_daily_summary_storage"
+            tags_update_method = partial(AzureReportDBAccessor(self.schema).populate_ocp_on_azure_tags_summary_table)
             unique_fields = {"currency": self.currency, "subscription_guid": self.faker.uuid4()}
-            service_gen = azure_service_gen
 
         provider = Provider.objects.filter(type=provider_type).first()
-        namespaces = {node[0]: self.faker.slug() for node in constants.OCP_NODES}
-        volumes = {node[0]: constants.OCP_PVCS[i] for i, node in enumerate(constants.OCP_NODES)}
         for dates, bill, report_period in zip(self.dates, bills, report_periods):
             start_date = dates[0]
             end_date = dates[1]
             with schema_context(self.schema):
                 days = (end_date - start_date).days
                 for i in range(days):
-                    for node_tuple in constants.OCP_NODES:
-                        namespace = namespaces.get(node_tuple[0])
-                        pvc_tuple = volumes.get(node_tuple[0])
-                        for data_source in constants.OCP_DATA_SOURCES:
-                            persistent_volume_claim = pvc_tuple[0] if data_source == "Storage" else None
-                            persistent_volume = pvc_tuple[1] if data_source == "Storage" else None
-                            storage_class = pvc_tuple[2] if data_source == "Storage" else None
-                            unique_fields.update(**service_gen())
-                            baker.make(
-                                daily_summary_table,
-                                report_period=report_period,
-                                cluster_id=cluster_id,
-                                cluster_alias=cluster_id,
-                                node=node_tuple[0],
-                                resource_id=node_tuple[1],
-                                usage_start=start_date + timedelta(i),
-                                usage_end=start_date + timedelta(i),
-                                cost_entry_bill=bill,
-                                namespace=[namespace],
-                                tags=random.choice(self.tags),
-                                source_uuid=provider.uuid,
-                                **unique_fields,
-                                _fill_optional=True,
-                            )
-                            baker.make(
-                                project_summary_table,
-                                report_period=report_period,
-                                cluster_id=cluster_id,
-                                cluster_alias=cluster_id,
-                                node=node_tuple[0],
-                                resource_id=node_tuple[1],
-                                usage_start=start_date + timedelta(i),
-                                usage_end=start_date + timedelta(i),
-                                pod_labels=random.choice(self.tags),
-                                cost_entry_bill=bill,
-                                namespace=namespace,
-                                data_source=data_source,
-                                persistentvolumeclaim=persistent_volume_claim,
-                                persistentvolume=persistent_volume,
-                                storageclass=storage_class,
-                                tags=random.choice(self.tags),
-                                source_uuid=provider.uuid,
-                                **unique_fields,
-                                _fill_optional=True,
-                            )
-            update_method([bill.id], start_date, end_date)
+                    baker.make_recipe(
+                        daily_summary_recipe,
+                        report_period=report_period,
+                        cluster_id=cluster_id,
+                        cluster_alias=cluster_id,
+                        usage_start=start_date + timedelta(i),
+                        usage_end=start_date + timedelta(i),
+                        cost_entry_bill=bill,
+                        tags=cycle(self.tags),
+                        source_uuid=provider.uuid,
+                        **unique_fields,
+                    )
+                    baker.make_recipe(
+                        project_summary_pod_recipe,
+                        report_period=report_period,
+                        cluster_id=cluster_id,
+                        cluster_alias=cluster_id,
+                        usage_start=start_date + timedelta(i),
+                        usage_end=start_date + timedelta(i),
+                        pod_labels=cycle(self.tags),
+                        cost_entry_bill=bill,
+                        tags=cycle(self.tags),
+                        source_uuid=provider.uuid,
+                        **unique_fields,
+                    )
+                    baker.make_recipe(
+                        project_summary_storage_recipe,
+                        report_period=report_period,
+                        cluster_id=cluster_id,
+                        cluster_alias=cluster_id,
+                        usage_start=start_date + timedelta(i),
+                        usage_end=start_date + timedelta(i),
+                        pod_labels=cycle(self.tags),
+                        cost_entry_bill=bill,
+                        tags=cycle(self.tags),
+                        source_uuid=provider.uuid,
+                        **unique_fields,
+                    )
+
+        tags_update_method([bill.id for bill in bills], self.first_start_date, self.last_end_date)
 
         refresh_materialized_views(self.schema, provider_type, provider_uuid=provider.uuid, synchronous=True)

@@ -1081,7 +1081,6 @@ class AzureReportQueryHandlerTest(IamTestCase):
         handler = AzureTagQueryHandler(query_params)
         tag_keys = handler.get_tag_keys()
         filter_key = tag_keys[0]
-        tag_keys = ["tag:" + tag for tag in tag_keys]
 
         ag_key = "cost_total"
         with tenant_context(self.tenant):

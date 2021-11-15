@@ -109,8 +109,6 @@ class ReportQueryHandler(QueryHandler):
         """Return the database table or view to query against."""
         query_table = self._mapper.query_table
         report_type = self._report_type
-        report_group = "default"
-
         if self.provider in (
             Provider.OCP_AWS,
             Provider.OCP_AZURE,
@@ -123,17 +121,16 @@ class ReportQueryHandler(QueryHandler):
         key_tuple = tuple(
             sorted(self.query_table_filter_keys.union(self.query_table_group_by_keys, self.query_table_access_keys))
         )
-        if key_tuple:
-            report_group = key_tuple
-
+        report_group = key_tuple or "default"
         # Special Casess for Network and Database Cards in the UI
         service_filter = set(self.parameters.get("filter", {}).get("service", []))
         if self.provider in (Provider.PROVIDER_AZURE, Provider.OCP_AZURE):
             service_filter = set(self.parameters.get("filter", {}).get("service_name", []))
-        if report_type == "costs" and service_filter and not service_filter.difference(self.network_services):
-            report_type = "network"
-        elif report_type == "costs" and service_filter and not service_filter.difference(self.database_services):
-            report_type = "database"
+        if report_type == "costs" and service_filter:
+            if not service_filter.difference(self.network_services):
+                report_type = "network"
+            elif not service_filter.difference(self.database_services):
+                report_type = "database"
 
         try:
             query_table = self._mapper.views[report_type][report_group]
@@ -144,28 +141,17 @@ class ReportQueryHandler(QueryHandler):
 
     def initialize_totals(self):
         """Initialize the total response column values."""
-        query_sum = {}
-        for value in self._mapper.report_type_map.get("aggregates").keys():
-            query_sum[value] = 0
-        return query_sum
+        return {value: 0 for value in self._mapper.report_type_map.get("aggregates").keys()}
 
     def get_tag_filter_keys(self):
         """Get tag keys from filter arguments."""
-        tag_filters = []
         filters = self.parameters.get("filter", {})
-        for filt in filters:
-            if filt in self._tag_keys:
-                tag_filters.append(filt)
-        return tag_filters
+        return [filt for filt in filters if filt in self._tag_keys]
 
     def get_tag_group_by_keys(self):
         """Get tag keys from group by arguments."""
-        tag_groups = []
         filters = self.parameters.get("group_by", {})
-        for filt in filters:
-            if filt in self._tag_keys:
-                tag_groups.append(filt)
-        return tag_groups
+        return [filt for filt in filters if filt in self._tag_keys]
 
     def _build_custom_filter_list(self, filter_type, method, filter_list):
         """Replace filter list items from custom method."""
@@ -400,7 +386,7 @@ class ReportQueryHandler(QueryHandler):
         # For that ranking to work we can't also group by instance_type.
         inherent_group_by = self._mapper._report_type_map.get("group_by")
         if inherent_group_by and not (group_by and self._limit):
-            group_by = group_by + list(set(inherent_group_by) - set(group_by))
+            group_by += list(set(inherent_group_by) - set(group_by))
 
         return group_by
 
@@ -690,7 +676,7 @@ class ReportQueryHandler(QueryHandler):
             OrderBy: A Django OrderBy clause using raw SQL
 
         """
-        descending = True if self.order_direction == "desc" else False
+        descending = self.order_direction == "desc"
         tag_column, tag_value = tag.split("__")
         return OrderBy(RawSQL(f"{tag_column} -> %s", (tag_value,)), descending=descending)
 
@@ -1022,11 +1008,10 @@ class ReportQueryHandler(QueryHandler):
                 current_total_sum = Decimal(query_sum.get(self._delta, {}).get("value") or 0)
             else:
                 current_total_sum = Decimal(query_sum.get(self._delta) or 0)
+        elif isinstance(query_sum.get("cost"), dict):
+            current_total_sum = Decimal(query_sum.get("cost", {}).get("total").get("value") or 0)
         else:
-            if isinstance(query_sum.get("cost"), dict):
-                current_total_sum = Decimal(query_sum.get("cost", {}).get("total").get("value") or 0)
-            else:
-                current_total_sum = Decimal(query_sum.get("cost") or 0)
+            current_total_sum = Decimal(query_sum.get("cost") or 0)
         delta_field = self._mapper._report_type_map.get("delta_key").get(self._delta)
         prev_total_sum = previous_query.aggregate(value=delta_field)
         if self.resolution == "daily":
@@ -1043,7 +1028,7 @@ class ReportQueryHandler(QueryHandler):
         self.query_delta = {"value": total_delta, "percent": total_delta_percent}
 
         if self.order_field == "delta":
-            reverse = True if self.order_direction == "desc" else False
+            reverse = self.order_direction == "desc"
             query_data = sorted(
                 list(query_data), key=lambda x: (x.get("delta_value", 0), x.get("delta_percent", 0)), reverse=reverse
             )

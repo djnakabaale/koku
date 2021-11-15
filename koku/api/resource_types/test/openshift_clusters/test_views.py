@@ -42,6 +42,6 @@ class ResourceTypesViewTestOpenshiftClusters(IamTestCase):
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         json_result = response.json()
-        self.assertIsNotNone(json_result.get("data"))
-        self.assertIsInstance(json_result.get("data"), list)
-        self.assertEqual(len(json_result.get("data")), expected)
+        meta = json_result["meta"]
+        self.assertIsNotNone(meta.get("count"))
+        self.assertEqual(meta.get("count"), expected)

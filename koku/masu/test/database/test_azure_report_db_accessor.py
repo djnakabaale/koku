@@ -14,6 +14,7 @@ from django.db.models import Min
 from django.db.models import Sum
 from tenant_schemas.utils import schema_context
 
+from api.report.test.util import constants
 from api.utils import DateHelper
 from koku.database import get_model
 from masu.database import AZURE_REPORT_TABLE_MAP
@@ -245,9 +246,7 @@ class AzureReportDBAccessorTest(MasuTestCase):
             sum_azure_cost = li_table.objects.aggregate(Sum("pretax_cost"))["pretax_cost__sum"]
 
         with schema_context(self.schema):
-            # These names are defined in the `azure_static_data.yml` used by Nise to populate the Azure data
-            namespaces = ["kube-system", "openshift", "banking", "mobile", "news-site", "weather"]
-            for namespace in namespaces:
+            for namespace in constants.OCP_NAMESPACES:
                 with self.subTest(namespace=namespace):
                     with connection.cursor() as cursor:
                         cursor.execute(

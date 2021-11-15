@@ -356,13 +356,13 @@ def update_enabled_keys(schema, enabled_keys_model, enabled_keys):
         # When we are in create mode, we do not want to change the state of existing keys
         if update_keys_enabled or update_keys_disabled:
             changed = True
-            if update_keys_enabled:
-                LOG.info(f"Updating {len(update_keys_enabled)} keys to ENABLED")
-                enabled_keys_model.objects.filter(key__in=update_keys_enabled).update(enabled=True)
+        if update_keys_enabled:
+            LOG.info(f"Updating {len(update_keys_enabled)} keys to ENABLED")
+            enabled_keys_model.objects.filter(key__in=update_keys_enabled).update(enabled=True)
 
-            if update_keys_disabled:
-                LOG.info(f"Updating {len(update_keys_disabled)} keys to DISABLED")
-                enabled_keys_model.objects.filter(key__in=update_keys_disabled).update(enabled=False)
+        if update_keys_disabled:
+            LOG.info(f"Updating {len(update_keys_disabled)} keys to DISABLED")
+            enabled_keys_model.objects.filter(key__in=update_keys_disabled).update(enabled=False)
 
     if not changed:
         LOG.info("No enabled keys updated.")

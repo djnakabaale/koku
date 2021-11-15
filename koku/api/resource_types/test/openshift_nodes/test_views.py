@@ -38,9 +38,9 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         json_result = response.json()
-        self.assertIsNotNone(json_result.get("data"))
-        self.assertIsInstance(json_result.get("data"), list)
-        self.assertEqual(len(json_result.get("data")), expected)
+        meta = json_result["meta"]
+        self.assertIsNotNone(meta.get("count"))
+        self.assertEqual(meta.get("count"), expected)
 
     @RbacPermissions({"openshift.cluster": {"read": ["OCP-on-AWS"]}})
     def test_openshift_node_with_cluster_access_view(self):
@@ -58,9 +58,9 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         json_result = response.json()
-        self.assertIsNotNone(json_result.get("data"))
-        self.assertIsInstance(json_result.get("data"), list)
-        self.assertEqual(len(json_result.get("data")), expected)
+        meta = json_result["meta"]
+        self.assertIsNotNone(meta.get("count"))
+        self.assertEqual(meta.get("count"), expected)
 
     @RbacPermissions({"openshift.cluster": {"read": ["OCP-on-AWS"]}, "openshift.node": {"read": ["node_1"]}})
     def test_openshift_node_with_cluster_and_node_access_view(self):
@@ -78,9 +78,9 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         json_result = response.json()
-        self.assertIsNotNone(json_result.get("data"))
-        self.assertIsInstance(json_result.get("data"), list)
-        self.assertEqual(len(json_result.get("data")), expected)
+        meta = json_result["meta"]
+        self.assertIsNotNone(meta.get("count"))
+        self.assertEqual(meta.get("count"), expected)
 
     @RbacPermissions({"openshift.cluster": {"read": ["OCP-on-AWS"]}, "openshift.node": {"read": ["*"]}})
     def test_openshift_node_with_cluster_and_all_node_access_view(self):
@@ -98,9 +98,9 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         json_result = response.json()
-        self.assertIsNotNone(json_result.get("data"))
-        self.assertIsInstance(json_result.get("data"), list)
-        self.assertEqual(len(json_result.get("data")), expected)
+        meta = json_result["meta"]
+        self.assertIsNotNone(meta.get("count"))
+        self.assertEqual(meta.get("count"), expected)
 
     @RbacPermissions({"openshift.cluster": {"read": ["*"]}, "openshift.node": {"read": ["node_1"]}})
     def test_openshift_node_with_all_cluster_and_node_access_view(self):
@@ -118,6 +118,6 @@ class ResourceTypesViewTestOpenshiftNodes(IamTestCase):
         response = self.client.get(url, **self.headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         json_result = response.json()
-        self.assertIsNotNone(json_result.get("data"))
-        self.assertIsInstance(json_result.get("data"), list)
-        self.assertEqual(len(json_result.get("data")), expected)
+        meta = json_result["meta"]
+        self.assertIsNotNone(meta.get("count"))
+        self.assertEqual(meta.get("count"), expected)

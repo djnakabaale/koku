@@ -20,6 +20,8 @@ class DataLoader(ABC):
         self.schema = schema
         self.customer = customer
         self.dates = self.get_test_data_dates(num_days)
+        self.first_start_date = self.dates[0][0]
+        self.last_end_date = self.dates[1][1]
 
     def get_test_data_dates(self, num_days):
         """Return a list of tuples with dates for nise data."""
@@ -38,9 +40,7 @@ class DataLoader(ABC):
         if days_of_data < num_days:
             extra_days = num_days - days_of_data
             prev_month_end = prev_month_end + relativedelta(days=extra_days)
-            if prev_month_end > self.dh.last_month_end:
-                prev_month_end = self.dh.last_month_end
-
+            prev_month_end = min(prev_month_end, self.dh.last_month_end)
         return [
             (prev_month_start, prev_month_end, self.dh.last_month_start),
             (start_date, end_date, self.dh.this_month_start),

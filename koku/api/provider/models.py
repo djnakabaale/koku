@@ -174,7 +174,7 @@ class Provider(models.Model):
                 cascade_delete(self.__class__, self.__class__.objects.filter(pk=self.pk))
                 post_delete.send(sender=self.__class__, instance=self, using=using)
         else:
-            LOG.warning("Cannot customer link cannot be found! Using ORM delete!")
+            LOG.warning("Customer link cannot be found! Using ORM delete!")
             super().delete()
 
 
