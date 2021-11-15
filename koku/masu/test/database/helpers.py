@@ -11,6 +11,7 @@ import uuid
 from decimal import Decimal
 
 import django.apps
+import pytz
 from dateutil import parser
 from dateutil import relativedelta
 from django.utils import timezone
@@ -65,7 +66,7 @@ class ReportObjectCreator:
         model = get_model(table_name)
         data = {}
         if bill_date:
-            bill_start = self.make_datetime_aware(bill_date).replace(day=1).date()
+            bill_start = self.make_datetime_aware(bill_date).replace(day=1)
             bill_end = bill_start + relativedelta.relativedelta(months=1)
 
             data["billing_period_start"] = bill_start
@@ -123,7 +124,7 @@ class ReportObjectCreator:
         table_name = OCP_REPORT_TABLE_MAP["report_period"]
         model = get_model(table_name)
 
-        period_start = self.make_datetime_aware(self.fake.past_datetime()).date().replace(day=1)
+        period_start = self.make_datetime_aware(self.fake.past_datetime()).replace(day=1)
         period_end = period_start + relativedelta.relativedelta(days=random.randint(1, 15))
         data = {
             "cluster_id": cluster_id or self.fake.pystr()[:8],
@@ -133,7 +134,7 @@ class ReportObjectCreator:
         }
 
         if period_date:
-            period_start = period_date.replace(day=1).date()
+            period_start = period_date.replace(day=1)
             period_end = period_start + relativedelta.relativedelta(months=1)
 
             data["report_period_start"] = period_start
@@ -148,6 +149,7 @@ class ReportObjectCreator:
 
         data = {"report_period_id": reporting_period.id}
         start_datetime = report_datetime or self.fake.past_datetime(start_date="-60d")
+        start_datetime = start_datetime.replace(tzinfo=pytz.UTC)
         data["interval_start"] = start_datetime
         data["interval_end"] = start_datetime + relativedelta.relativedelta(hours=+1)
         with schema_context(self.schema):
@@ -344,10 +346,8 @@ class ReportObjectCreator:
         table_name = AZURE_REPORT_TABLE_MAP["line_item"]
         model = get_model(table_name)
 
-        if usage_date:
-            usage_date = usage_date.date() if isinstance(usage_date, datetime.datetime) else usage_date
-        else:
-            usage_date = (bill.billing_period_start + relativedelta.relativedelta(days=random.randint(1, 15))).date()
+        if usage_date is None:
+            usage_date = bill.billing_period_start + relativedelta.relativedelta(days=random.randint(1, 15))
 
         with schema_context(self.schema):
             return baker.make(

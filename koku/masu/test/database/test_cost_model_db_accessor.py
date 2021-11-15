@@ -5,6 +5,7 @@
 """Test the CostModelDBAccessor utility object."""
 import random
 
+from model_bakery import baker
 from tenant_schemas.utils import schema_context
 
 from api.metrics import constants as metric_constants
@@ -216,10 +217,11 @@ class CostModelDBAccessorTestNoRateOrMarkup(MasuTestCase):
     def setUp(self):
         """Set up a test with database objects."""
         super().setUp()
-        self.provider_uuid = self.ocp_provider_uuid
+        provider = baker.make("Provider", type=Provider.PROVIDER_OCP, _fill_optional=True)
+        self.provider_uuid = str(provider.uuid)
         self.creator = ReportObjectCreator(self.schema)
 
-        reporting_period = self.creator.create_ocp_report_period(self.ocp_provider_uuid)
+        reporting_period = self.creator.create_ocp_report_period(self.provider_uuid)
         report = self.creator.create_ocp_report(reporting_period)
         self.creator.create_ocp_usage_line_item(reporting_period, report)
         self.creator.create_ocp_node_label_line_item(reporting_period, report)
