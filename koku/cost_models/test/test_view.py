@@ -159,7 +159,7 @@ class CostModelViewTests(IamTestCase):
 
     def test_read_cost_model_success(self):
         """Test that we can read a cost model."""
-        cost_model = CostModel.objects.first()
+        cost_model = CostModel.objects.get(uuid=self.fake_data_cost_model_uuid)
         url = reverse("cost-models-detail", kwargs={"uuid": cost_model.uuid})
         client = APIClient()
         response = client.get(url, **self.headers)
@@ -266,7 +266,7 @@ class CostModelViewTests(IamTestCase):
         test_data = self.fake_data
         test_data["rates"][0]["tiered_rates"][0]["value"] = round(Decimal(random.random()), 6)
         with tenant_context(self.tenant):
-            cost_model = CostModel.objects.first()
+            cost_model = CostModel.objects.get(uuid=self.fake_data_cost_model_uuid)
             url = reverse("cost-models-detail", kwargs={"uuid": cost_model.uuid})
             client = APIClient()
 
@@ -285,7 +285,7 @@ class CostModelViewTests(IamTestCase):
 
     def test_delete_cost_model_success(self):
         """Test that we can delete an existing rate."""
-        cost_model = CostModel.objects.first()
+        cost_model = CostModel.objects.get(uuid=self.fake_data_cost_model_uuid)
         url = reverse("cost-models-detail", kwargs={"uuid": cost_model.uuid})
         client = APIClient()
         with patch("cost_models.cost_model_manager.chain"):
@@ -322,10 +322,15 @@ class CostModelViewTests(IamTestCase):
         for keyname in ["meta", "links", "data"]:
             self.assertIn(keyname, response.data)
         self.assertIsInstance(response.data.get("data"), list)
-        self.assertEqual(len(response.data.get("data")), 1)
+        self.assertEqual(len(response.data.get("data")), 2)
 
-        cost_model = response.data.get("data")[0]
-        self.assertIsNotNone(cost_model.get("uuid"))
+        data = response.data.get("data")
+        cost_model = None
+        for item in data:
+            if item.get("uuid") == str(self.fake_data_cost_model_uuid):
+                cost_model = item
+                break
+        self.assertIsNotNone(cost_model)
         self.assertIsNotNone(cost_model.get("sources"))
         self.assertEqual(
             self.fake_data["rates"][0]["metric"]["name"], cost_model.get("rates", [])[0].get("metric", {}).get("name")

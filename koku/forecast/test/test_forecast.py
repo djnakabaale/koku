@@ -24,7 +24,7 @@ from api.forecast.views import OCPCostForecastView
 from api.iam.test.iam_test_case import IamTestCase
 from api.query_filter import QueryFilter
 from api.query_filter import QueryFilterCollection
-from api.report.test.tests_queries import assertSameQ
+from api.report.test.test_queries import assertSameQ
 from api.utils import DateHelper
 from forecast import AWSForecast
 from forecast import AzureForecast
@@ -52,10 +52,7 @@ class MockQuerySet:
 
     def values(self, *args):
         """Return data for the specified args."""
-        results = []
-        for row in self.data:
-            results.append({arg: row.get(arg) for arg in args})
-        return results
+        return [{arg: row.get(arg) for arg in args} for row in self.data]
 
     @property
     def len(self):
@@ -163,9 +160,7 @@ class AWSForecastTest(IamTestCase):
         params = self.mocked_query_params("?", AWSCostForecastView)
         dh = DateHelper()
         days_in_month = dh.this_month_end.day
-        data = {}
-        for i in range(days_in_month):
-            data[dh.this_month_start + timedelta(days=i)] = Decimal(20)
+        data = {dh.this_month_start + timedelta(days=i): Decimal(20) for i in range(days_in_month)}
 
         outlier = Decimal(100)
         data[dh.this_month_start] = outlier
@@ -179,16 +174,15 @@ class AWSForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -226,18 +220,15 @@ class AWSForecastTest(IamTestCase):
         """Test that predict() returns expected values for increasing costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            # the test data needs to include some jitter to avoid
-            # division-by-zero in the underlying dot-product maths.
-            expected.append(
-                {
-                    "usage_start": dh.n_days_ago(dh.today, 10 - n).date(),
-                    "total_cost": 5 + random.random(),
-                    "infrastructure_cost": 3 + random.random(),
-                    "supplementary_cost": 2 + random.random(),
-                }
-            )
+        expected = [
+            {
+                "usage_start": dh.n_days_ago(dh.today, 10 - n).date(),
+                "total_cost": 5 + random.random(),
+                "infrastructure_cost": 3 + random.random(),
+                "supplementary_cost": 2 + random.random(),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -269,16 +260,15 @@ class AWSForecastTest(IamTestCase):
         """Test that predict() returns expected date range."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": dh.n_days_ago(dh.today, 10 - n).date(),
-                    "total_cost": 5,
-                    "infrastructure_cost": 3,
-                    "supplementary_cost": 2,
-                }
-            )
+        expected = [
+            {
+                "usage_start": dh.n_days_ago(dh.today, 10 - n).date(),
+                "total_cost": 5,
+                "infrastructure_cost": 3,
+                "supplementary_cost": 2,
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -306,18 +296,15 @@ class AWSForecastTest(IamTestCase):
 
         for number in num_elements:
             with self.subTest(num_elements=number):
-                expected = []
-                for n in range(0, number):
-                    # the test data needs to include some jitter to avoid
-                    # division-by-zero in the underlying dot-product maths.
-                    expected.append(
-                        {
-                            "usage_start": dh.n_days_ago(dh.today, 10 - n).date(),
-                            "total_cost": 5 + (0.01 * n),
-                            "infrastructure_cost": 3 + (0.01 * n),
-                            "supplementary_cost": 2 + (0.01 * n),
-                        }
-                    )
+                expected = [
+                    {
+                        "usage_start": dh.n_days_ago(dh.today, 10 - n).date(),
+                        "total_cost": 5 + (0.01 * n),
+                        "infrastructure_cost": 3 + (0.01 * n),
+                        "supplementary_cost": 2 + (0.01 * n),
+                    }
+                    for n in range(number)
+                ]
                 mock_qset = MockQuerySet(expected)
 
                 mocked_table = Mock()
@@ -462,16 +449,15 @@ class AzureForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -513,16 +499,15 @@ class GCPForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -591,16 +576,15 @@ class OCPForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -674,16 +658,15 @@ class OCPAllForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -725,16 +708,15 @@ class OCPAWSForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
@@ -776,16 +758,15 @@ class OCPAzureForecastTest(IamTestCase):
         """Test that predict() returns expected values for flat costs."""
         dh = DateHelper()
 
-        expected = []
-        for n in range(0, 10):
-            expected.append(
-                {
-                    "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
-                    "total_cost": 5 + (0.01 * n),
-                    "infrastructure_cost": 3 + (0.01 * n),
-                    "supplementary_cost": 2 + (0.01 * n),
-                }
-            )
+        expected = [
+            {
+                "usage_start": (dh.this_month_start + timedelta(days=n)).date(),
+                "total_cost": 5 + (0.01 * n),
+                "infrastructure_cost": 3 + (0.01 * n),
+                "supplementary_cost": 2 + (0.01 * n),
+            }
+            for n in range(10)
+        ]
         mock_qset = MockQuerySet(expected)
 
         mocked_table = Mock()
