@@ -9,10 +9,11 @@ from model_bakery.recipe import foreign_key
 from model_bakery.recipe import Recipe
 from model_bakery.recipe import seq
 
-from api.report.test.util import constants
 from api.report.test.util.constants import AWS_CONSTANTS
 from api.report.test.util.constants import AWS_GEOG
 from api.report.test.util.constants import AZURE_CONSTANTS
+from api.report.test.util.constants import GCP_CONSTANTS
+from api.report.test.util.constants import OCP_CONSTANTS
 
 
 fake = Faker()
@@ -31,6 +32,8 @@ aws_daily_summary = Recipe(
     region=cycle(AWS_GEOG["regions"]),
     availability_zone=cycle(AWS_GEOG["availability_zones"]),
     _fill_optional=True,
+    _bulk_create=True,
+    _quantity=AWS_CONSTANTS.length,
 )
 
 azure_daily_summary = Recipe(
@@ -42,16 +45,20 @@ azure_daily_summary = Recipe(
     unit_of_measure=cycle(AZURE_CONSTANTS["units_of_measure"]),
     resource_location="US East",
     _fill_optional=True,
+    _bulk_create=True,
+    _quantity=AZURE_CONSTANTS.length,
 )
 
 gcp_daily_summary = Recipe(
     "GCPCostEntryLineItemDailySummary",
-    service_id=cycle(constants.GCP_SERVICE_IDS),
-    service_alias=cycle(constants.GCP_SERVICE_ALIASES),
-    sku_id=cycle(constants.GCP_SERVICE_IDS),
-    sku_alias=cycle(constants.GCP_SKU_ALIASES),
-    unit=cycle(constants.GCP_UNITS),
+    service_id=cycle(GCP_CONSTANTS["service_ids"]),
+    service_alias=cycle(GCP_CONSTANTS["service_aliases"]),
+    sku_id=cycle(GCP_CONSTANTS["service_ids"]),
+    sku_alias=cycle(GCP_CONSTANTS["sku_aliases"]),
+    unit=cycle(GCP_CONSTANTS["units"]),
     _fill_optional=True,
+    _bulk_create=True,
+    _quantity=GCP_CONSTANTS.length,
 )
 
 ocp_usage_pod = Recipe(  # Pod data_source
@@ -59,7 +66,7 @@ ocp_usage_pod = Recipe(  # Pod data_source
     data_source="Pod",
     node=seq("node_"),
     resource_id=seq("i-0000000"),
-    namespace=cycle(constants.OCP_NAMESPACES),
+    namespace=cycle(OCP_CONSTANTS["namespaces"]),
     pod_limit_cpu_core_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     pod_usage_cpu_core_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     pod_request_cpu_core_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
@@ -72,7 +79,10 @@ ocp_usage_pod = Recipe(  # Pod data_source
     node_capacity_memory_gigabyte_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     cluster_capacity_cpu_core_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     cluster_capacity_memory_gigabyte_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
-    pod_labels=cycle(constants.OCP_POD_LABELS),
+    pod_labels=cycle(OCP_CONSTANTS["pod_labels"]),
+    _fill_optional=False,
+    _bulk_create=True,
+    _quantity=OCP_CONSTANTS.length,
 )
 
 ocp_usage_storage = Recipe(  # Storage data_source
@@ -80,10 +90,10 @@ ocp_usage_storage = Recipe(  # Storage data_source
     data_source="Storage",
     node=seq("node_"),
     resource_id=seq("i-0000000"),
-    namespace=cycle(constants.OCP_NAMESPACES),
+    namespace=cycle(OCP_CONSTANTS["namespaces"]),
     persistentvolumeclaim=seq("pvc_"),
     persistentvolume=seq("volume_"),
-    storageclass=cycle(constants.OCP_STORAGE_CLASSES),
+    storageclass=cycle(OCP_CONSTANTS["storage_classes"]),
     persistentvolumeclaim_capacity_gigabyte=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     persistentvolumeclaim_capacity_gigabyte_months=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     volume_request_storage_gigabyte_months=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
@@ -94,14 +104,17 @@ ocp_usage_storage = Recipe(  # Storage data_source
     node_capacity_memory_gigabyte_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     cluster_capacity_cpu_core_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
     cluster_capacity_memory_gigabyte_hours=fake.pydecimal(left_digits=5, right_digits=5, positive=True),
-    volume_labels=cycle(constants.OCP_PVC_LABELS),
+    volume_labels=cycle(OCP_CONSTANTS["pvc_labels"]),
+    _fill_optional=False,
+    _bulk_create=True,
+    _quantity=OCP_CONSTANTS.length,
 )
 
 ocp_on_aws_daily_summary = Recipe(
     "OCPAWSCostLineItemDailySummary",
     node=seq("node_", start=100),
     resource_id=seq("i-0000", increment_by=111, start=111),
-    namespace=cycle([ns] for ns in constants.OCP_NAMESPACES),
+    namespace=cycle([ns] for ns in OCP_CONSTANTS["namespaces"]),
     product_code=cycle(AWS_CONSTANTS["product_codes"]),
     product_family=cycle(AWS_CONSTANTS["product_families"]),
     unit=cycle(AWS_CONSTANTS["units"]),
@@ -115,7 +128,7 @@ ocp_on_aws_project_daily_summary_pod = Recipe(  # Pod data_source
     data_source="Pod",
     node=seq("node_", start=100),
     resource_id=seq("i-0000", increment_by=111, start=111),
-    namespace=cycle(constants.OCP_NAMESPACES),
+    namespace=cycle(OCP_CONSTANTS["namespaces"]),
     persistentvolumeclaim=None,
     persistentvolume=None,
     storageclass=None,
@@ -132,10 +145,10 @@ ocp_on_aws_project_daily_summary_storage = Recipe(  # Storage data_source
     data_source="Storage",
     node=seq("node_", start=100),
     resource_id=seq("i-0000", increment_by=111, start=111),
-    namespace=cycle(constants.OCP_NAMESPACES),
+    namespace=cycle(OCP_CONSTANTS["namespaces"]),
     persistentvolumeclaim=seq("pvc_", start=100),
     persistentvolume=seq("volume_", start=100),
-    storageclass=cycle(constants.OCP_STORAGE_CLASSES),
+    storageclass=cycle(OCP_CONSTANTS["storage_classes"]),
     product_code=cycle(AWS_CONSTANTS["product_codes"]),
     product_family=cycle(AWS_CONSTANTS["product_families"]),
     unit=cycle(AWS_CONSTANTS["units"]),
@@ -148,7 +161,7 @@ ocp_on_azure_daily_summary = Recipe(
     "OCPAzureCostLineItemDailySummary",
     node=seq("node_", start=1000),
     resource_id=seq("i-000", increment_by=1111, start=1111),
-    namespace=cycle([ns] for ns in constants.OCP_NAMESPACES),
+    namespace=cycle([ns] for ns in OCP_CONSTANTS["namespaces"]),
     service_name=cycle(AZURE_CONSTANTS["service_names"]),
     instance_type=cycle(AZURE_CONSTANTS["instance_types"]),
     resource_location="US East",
@@ -162,7 +175,7 @@ ocp_on_azure_project_daily_summary_pod = Recipe(  # Pod data_source
     data_source="Pod",
     node=seq("node_", start=1000),
     resource_id=seq("i-000", increment_by=1111, start=1111),
-    namespace=cycle(constants.OCP_NAMESPACES),
+    namespace=cycle(OCP_CONSTANTS["namespaces"]),
     persistentvolumeclaim=None,
     persistentvolume=None,
     storageclass=None,
@@ -179,10 +192,10 @@ ocp_on_azure_project_daily_summary_storage = Recipe(  # Storage data_source
     data_source="Storage",
     node=seq("node_", start=100),
     resource_id=seq("i-000", increment_by=1111, start=1111),
-    namespace=cycle(constants.OCP_NAMESPACES),
+    namespace=cycle(OCP_CONSTANTS["namespaces"]),
     persistentvolumeclaim=seq("pvc_", start=1000),
     persistentvolume=seq("volume_", start=1000),
-    storageclass=cycle(constants.OCP_STORAGE_CLASSES),
+    storageclass=cycle(OCP_CONSTANTS["storage_classes"]),
     service_name=cycle(AZURE_CONSTANTS["service_names"]),
     instance_type=cycle(AZURE_CONSTANTS["instance_types"]),
     unit_of_measure=cycle(AZURE_CONSTANTS["units_of_measure"]),

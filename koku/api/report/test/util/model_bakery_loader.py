@@ -16,7 +16,6 @@ from tenant_schemas.utils import schema_context
 
 from api.models import Provider
 from api.provider.models import ProviderBillingSource
-from api.report.test.util import constants
 from api.report.test.util.constants import AWS_CONSTANTS
 from api.report.test.util.constants import OCP_ON_PREM_COST_MODEL
 from api.report.test.util.data_loader import DataLoader
@@ -60,11 +59,6 @@ class ModelBakeryDataLoader(DataLoader):
     def _get_bill_model(self, provider_type):
         """Return the correct model for a provider type."""
         return BILL_MODELS[provider_type]
-
-    def _get_cost_entry_model(self, provider_type):
-        """Return the correct model for a provider type."""
-        if provider_type in (Provider.PROVIDER_AWS, Provider.PROVIDER_AWS_LOCAL):
-            return "AWSCostEntry"
 
     def _populate_enabled_tag_key_table(self):
         """Insert records for our tag keys."""
@@ -110,9 +104,7 @@ class ModelBakeryDataLoader(DataLoader):
             num_total_files=num_files,
             _fill_optional=True,
         )
-
         baker.make("CostUsageReportStatus", manifest=manifest, _fill_optional=True)
-
         return manifest
 
     def create_bill(self, provider_type, provider, bill_date, **kwargs):
@@ -129,12 +121,11 @@ class ModelBakeryDataLoader(DataLoader):
                 data["billing_period_end"] = month_end
             return baker.make(model_str, **data, **kwargs, _fill_optional=False)
 
-    def create_cost_entry(self, provider_type, bill_date, bill):
+    def create_cost_entry(self, bill_date, bill):
         """Create a cost entry object for the provider"""
         with schema_context(self.schema):
-            model_str = self._get_cost_entry_model(provider_type)
             month_end = self.dh.month_end(bill_date)
-            baker.make(model_str, interval_start=bill_date, interval_end=month_end, bill=bill)
+            baker.make("AWSCostEntry", interval_start=bill_date, interval_end=month_end, bill=bill)
 
     def create_cost_model(self, provider):
         """Create a cost model and map entry."""
@@ -186,7 +177,7 @@ class ModelBakeryDataLoader(DataLoader):
                 self.create_manifest(provider, bill_date)
                 bill = self.create_bill(provider_type, provider, bill_date, payer_account_id=payer_account_id)
                 bills.append(bill)
-                self.create_cost_entry(provider_type, bill_date, bill)
+                self.create_cost_entry(bill_date, bill)
                 days = (end_date - start_date).days
                 for i in range(days):
                     baker.make_recipe(  # Storage data_source
@@ -200,7 +191,6 @@ class ModelBakeryDataLoader(DataLoader):
                         usage_end=start_date + timedelta(i),
                         tags=cycle(self.tags),
                         source_uuid=provider.uuid,
-                        _bulk_create=True,
                         _quantity=max(AWS_CONSTANTS.length, len(aliases)),
                     )
         bill_ids = [bill.id for bill in bills]
@@ -248,8 +238,6 @@ class ModelBakeryDataLoader(DataLoader):
                         tags=cycle(self.tags),
                         currency=self.currency,
                         source_uuid=provider.uuid,
-                        _bulk_create=True,
-                        _quantity=len(constants.AZURE_SERVICE_NAMES),
                     )
         bill_ids = [bill.id for bill in bills]
         AzureReportDBAccessor(self.schema).populate_tags_summary_table(
@@ -289,8 +277,6 @@ class ModelBakeryDataLoader(DataLoader):
                         tags=cycle(self.tags),
                         currency=self.currency,
                         source_uuid=provider.uuid,
-                        _bulk_create=True,
-                        _quantity=len(constants.GCP_SERVICE_IDS),
                     )
         bill_ids = [bill.id for bill in bills]
         GCPReportDBAccessor(self.schema).populate_tags_summary_table(
@@ -333,8 +319,6 @@ class ModelBakeryDataLoader(DataLoader):
                         source_uuid=provider.uuid,
                         infrastructure_raw_cost=infra_raw_cost,
                         infrastructure_project_raw_cost=project_infra_raw_cost,
-                        _bulk_create=True,
-                        _quantity=len(constants.OCP_NAMESPACES),
                     )
                     baker.make_recipe(  # Pod data_source
                         "api.report.test.util.ocp_usage_pod",
@@ -346,8 +330,6 @@ class ModelBakeryDataLoader(DataLoader):
                         source_uuid=provider.uuid,
                         infrastructure_raw_cost=infra_raw_cost,
                         infrastructure_project_raw_cost=project_infra_raw_cost,
-                        _bulk_create=True,
-                        _quantity=len(constants.OCP_NAMESPACES),
                     )
 
         report_period_ids = [report_period.id for report_period in report_periods]
