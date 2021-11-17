@@ -21,6 +21,17 @@ VIEWS = (
     "reporting_ocpaws_network_summary",
 )
 
+UI_SUMMARY_TABLES = (
+    "reporting_ocpaws_cost_summary_p",
+    "reporting_ocpaws_cost_summary_by_account_p",
+    "reporting_ocpaws_cost_summary_by_service_p",
+    "reporting_ocpaws_cost_summary_by_region_p",
+    "reporting_ocpaws_compute_summary_p",
+    "reporting_ocpaws_storage_summary_p",
+    "reporting_ocpaws_network_summary_p",
+    "reporting_ocpaws_database_summary_p",
+)
+
 
 class OCPAWSCostLineItemDailySummary(models.Model):
     """A summarized view of OCP on AWS cost."""
@@ -560,3 +571,395 @@ class OCPAWSDatabaseSummary(models.Model):
     currency_code = models.CharField(max_length=10)
 
     source_uuid = models.UUIDField(unique=False, null=True)
+
+
+# ======================================================
+#  Partitioned Models to replace matviews
+# ======================================================
+
+
+class OCPAWSCostSummaryP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSCostSummary."""
+
+        db_table = "reporting_ocpaws_cost_summary_p"
+        indexes = [models.Index(fields=["usage_start"], name="ocpawscostsumm_usage_start")]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSCostSummaryByAccountP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSCostSummaryByAccount."""
+
+        db_table = "reporting_ocpaws_cost_summary_by_account_p"
+        indexes = [models.Index(fields=["usage_start"], name="ocpawscost_acct_usage_start")]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSCostSummaryByServiceP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSCostSummaryByService."""
+
+        db_table = "reporting_ocpaws_cost_summary_by_service_p"
+        indexes = [
+            models.Index(fields=["usage_start"], name="ocpawscost_serv_usage_start"),
+            models.Index(fields=["usage_account_id"], name="ocpawscostsumm_serv_usage_acct"),
+            models.Index(fields=["product_code"], name="ocpawscostsumm_serv_p_code"),
+        ]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    product_code = models.CharField(max_length=50, null=False)
+
+    product_family = models.CharField(max_length=150, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSCostSummaryByRegionP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSCostSummaryByRegion."""
+
+        db_table = "reporting_ocpaws_cost_summary_by_region_p"
+        indexes = [
+            models.Index(fields=["usage_start"], name="ocpawscostsumm_reg_usage_start"),
+            models.Index(fields=["usage_account_id"], name="ocpawscostsumm_reg_usage_acct"),
+            models.Index(fields=["region"], name="ocpawscostsumm_reg_region"),
+        ]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    region = models.CharField(max_length=50, null=True)
+
+    availability_zone = models.CharField(max_length=50, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSComputeSummaryP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSComputeSummary."""
+
+        db_table = "reporting_ocpaws_compute_summary_p"
+        indexes = [
+            models.Index(fields=["usage_start"], name="ocpawscompsumm_usage_start"),
+            models.Index(fields=["usage_account_id"], name="ocpawscompsumm_usage_acct"),
+            models.Index(fields=["instance_type"], name="ocpawscompsumm_inst_type"),
+        ]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    instance_type = models.CharField(max_length=50, null=True)
+
+    resource_id = models.CharField(max_length=253, null=True)
+
+    usage_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    unit = models.CharField(max_length=63, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSStorageSummaryP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSStorageSummary."""
+
+        db_table = "reporting_ocpaws_storage_summary_p"
+        indexes = [
+            models.Index(fields=["usage_start"], name="ocpawsstorsumm_usage_start"),
+            models.Index(fields=["usage_account_id"], name="ocpawsstorsumm_usage_acct"),
+        ]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    product_family = models.CharField(max_length=150, null=True)
+
+    usage_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    unit = models.CharField(max_length=63, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSNetworkSummaryP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSNetworkSummary."""
+
+        db_table = "reporting_ocpaws_network_summary_p"
+        indexes = [
+            models.Index(fields=["usage_start"], name="ocpawsnetsumm_usage_start"),
+            models.Index(fields=["usage_account_id"], name="ocpawsnetsumm_usage_acct"),
+        ]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    product_code = models.CharField(max_length=50, null=False)
+
+    usage_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    unit = models.CharField(max_length=63, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
+
+
+class OCPAWSDatabaseSummaryP(models.Model):
+    """A summarized partitioned table specifically for UI API queries.
+
+    This table gives a daily breakdown of total cost.
+
+    """
+
+    class PartitionInfo:
+        partition_type = "RANGE"
+        partition_cols = ["usage_start"]
+
+    class Meta:
+        """Meta for OCPAWSDatabaseSummary."""
+
+        db_table = "reporting_ocpaws_database_summary_p"
+        indexes = [
+            models.Index(fields=["usage_start"], name="ocpawsdbsumm_usage_start"),
+            models.Index(fields=["usage_account_id"], name="ocpawsdbsumm_usage_acct"),
+        ]
+
+    id = models.UUIDField(primary_key=True)
+
+    usage_start = models.DateField(null=False)
+
+    usage_end = models.DateField(null=False)
+
+    cluster_id = models.CharField(max_length=50, null=True)
+
+    cluster_alias = models.CharField(max_length=256, null=True)
+
+    usage_account_id = models.CharField(max_length=50, null=False)
+
+    account_alias = models.ForeignKey("AWSAccountAlias", on_delete=models.DO_NOTHING, null=True)
+
+    product_code = models.CharField(max_length=50, null=False)
+
+    usage_amount = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    unit = models.CharField(max_length=63, null=True)
+
+    unblended_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    markup_cost = models.DecimalField(max_digits=24, decimal_places=9, null=True)
+
+    currency_code = models.CharField(max_length=10)
+
+    source_uuid = models.ForeignKey(
+        "api.Provider", on_delete=models.CASCADE, unique=False, null=True, db_column="source_uuid"
+    )
