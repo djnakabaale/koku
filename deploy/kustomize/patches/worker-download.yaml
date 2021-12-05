@@ -4,7 +4,7 @@
     name: clowder-worker-download
     minReplicas: ${{WORKER_DOWNLOAD_MIN_REPLICAS}}
     autoScaler:
-    - maxReplicaCount: ${{WORKER_DOWNLOAD_MAX_REPLICAS}}
+      maxReplicaCount: ${{WORKER_DOWNLOAD_MAX_REPLICAS}}
       triggers:
       - type: prometheus
         metadata:
