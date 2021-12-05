@@ -3,6 +3,14 @@
   value:
     name: clowder-worker-download
     minReplicas: ${{WORKER_DOWNLOAD_MIN_REPLICAS}}
+    autoScaler:
+    - maxReplicaCount: ${{WORKER_DOWNLOAD_MAX_REPLICAS}}
+      triggers:
+      - type: prometheus
+        metadata:
+          metricName: download-queue
+          query: koku:celery:download_queue # query is defined in promrule file in app-interface
+          threshold: '10'
     webServices:
       public:
         enabled: false
@@ -176,7 +184,14 @@
     displayName: Minimum replicas
     name: WORKER_DOWNLOAD_MIN_REPLICAS
     required: true
-    value: '2'
+    value: '1'
+- op: add
+  path: /parameters/-
+  value:
+    displayName: Maximum replicas
+    name: WORKER_DOWNLOAD_MAX_REPLICAS
+    required: true
+    value: '6'
 - op: add
   path: /parameters/-
   value:
