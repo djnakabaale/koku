@@ -9,7 +9,8 @@
       - type: prometheus
         metadata:
           metricName: download-queue
-          query: koku:celery:download_queue # query is defined in promrule file in app-interface
+          # query: koku:celery:download_queue # query is defined in promrule file in app-interface
+          query: max(download_backlog{namespace="ephemeral-14", pod=~".+worker.+"})
           threshold: '10'
     webServices:
       public:

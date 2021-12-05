@@ -1197,7 +1197,7 @@ objects:
         triggers:
         - metadata:
             metricName: download-queue
-            query: koku:celery:download_queue
+            query: max(download_backlog{namespace="ephemeral-14", pod=~".+worker.+"})
             threshold: "10"
           type: prometheus
       minReplicas: ${{WORKER_DOWNLOAD_MIN_REPLICAS}}
