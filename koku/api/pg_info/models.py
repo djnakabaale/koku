@@ -133,7 +133,10 @@ monitor_locks as (
 SELECT blocked_locks.pid            AS blocked_pid,
        blocked_locks.locktype       AS blocked_locktype,
        blocked_locks.mode           AS blocked_lockmode,
-       age(blocked_activity.query_start)::text AS blocked_query_duration,
+       (now() at time zone 'UTC'
+            - blocked_activity.xact_start at time zone 'UTC')::text AS blocked_transaction_duration,
+       (now() at time zone 'UTC'
+            - blocked_activity.query_start at time zone 'UTC')::text AS blocked_query_duration,
        blocked_activity.usename     AS blocked_user,
        blocking_locks.pid           AS blocking_pid,
        blocked_locks.locktype       AS blocking_locktype,
@@ -163,6 +166,7 @@ SELECT blocked_locks.pid            AS blocked_pid,
 SELECT l.blocked_pid,
        l.blocked_locktype,
        l.blocked_lockmode,
+       l.blocked_transaction_duration,
        l.blocked_query_duration,
        l.blocked_user,
        coalesce(bk.relation, '<UNKNOWN>') AS blocked_relation,
@@ -187,4 +191,5 @@ SELECT l.blocked_pid,
         cur.execute(sql)
         res = cur.fetchall()
 
+    LOG.info(f"Found {len(res)} blocked transactions")
     return res
