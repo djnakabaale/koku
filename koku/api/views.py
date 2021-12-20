@@ -17,6 +17,9 @@ from api.forecast.views import OCPCostForecastView
 from api.metrics.views import metrics
 from api.openapi.view import openapi
 from api.organizations.aws.view import AWSOrgView
+from api.pg_info.views import PGLocksView
+from api.pg_info.views import PGStatActivityView
+from api.pg_info.views import PGStatStatementsView
 from api.report.all.openshift.view import OCPAllCostView
 from api.report.all.openshift.view import OCPAllInstanceTypeView
 from api.report.all.openshift.view import OCPAllStorageView

@@ -2,7 +2,7 @@ import logging
 
 from django.db import connection
 from django.db import models
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import NamedTupleCursor
 
 
 # Future!
@@ -35,6 +35,7 @@ class PGStatStatements(models.Model):
     class Meta:
         managed = False
         db_table = 'public"."pg_stat_statements'
+        ordering = ["-mean_time"]
 
     user = models.ForeignKey("PGRole", db_column="userid", on_delete=models.DO_NOTHING)
     db = models.ForeignKey("PGDatabase", db_column="dbid", on_delete=models.DO_NOTHING)
@@ -187,7 +188,7 @@ SELECT l.blocked_pid,
     res = []
     LOG.info("Getting blocked, blocking lock process information")
     LOG.debug("Using psycopg2.extras.RealDictCursor")
-    with connection.connection.cursor(cursor_factory=RealDictCursor) as cur:
+    with connection.connection.cursor(cursor_factory=NamedTupleCursor) as cur:
         cur.execute(sql)
         res = cur.fetchall()
 

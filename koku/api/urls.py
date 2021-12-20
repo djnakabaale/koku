@@ -66,6 +66,9 @@ from api.views import OCPProjectsView
 from api.views import OCPTagView
 from api.views import OCPVolumeView
 from api.views import openapi
+from api.views import PGLocksView
+from api.views import PGStatActivityView
+from api.views import PGStatStatementsView
 from api.views import ResourceTypeView
 from api.views import SettingsView
 from api.views import StatusView
@@ -363,5 +366,8 @@ urlpatterns = [
         cache_page(timeout=settings.CACHE_MIDDLEWARE_SECONDS, key_prefix=GCP_CACHE_PREFIX)(GCPStorageView.as_view()),
         name="reports-gcp-storage",
     ),
+    path("pg_info/locks/", PGLocksView.as_view(), name="pginfo-locks"),
+    path("pg_info/stmt-activity/", PGStatActivityView().as_view(), name="pginfo-stmt-activity"),
+    path("pg_info/stmt-stats/", PGStatStatementsView().as_view(), name="pginfo-stmt-stats"),
 ]
 urlpatterns += ROUTER.urls
